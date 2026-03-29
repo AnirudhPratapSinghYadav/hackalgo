@@ -72,7 +72,7 @@ export default function WalletConnect() {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
              <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">Connected</h2>
+          <h2 className="text-xl font-bold text-green-600 mb-1">Connected</h2>
           <p className="text-sm font-mono text-gray-600 mb-4 bg-gray-200 px-3 py-1 rounded">
             {truncateAddress(activeAddress)}
           </p>
