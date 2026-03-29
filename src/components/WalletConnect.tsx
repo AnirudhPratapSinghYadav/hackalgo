@@ -108,7 +108,7 @@ export default function WalletConnect() {
         
         {/* Pera Wallet */}
         <div 
-          className="flex items-center border-b border-[#E5E7EB] py-4 cursor-pointer hover:bg-gray-50 px-2 -mx-2 rounded transition-colors group"
+          className="flex items-center border-b border-[#E5E7EB] py-4 cursor-pointer hover:bg-gray-50 hover:shadow-sm px-2 -mx-2 rounded transition-colors group"
           onClick={() => handleConnect('pera')}
         >
           <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center mr-3 flex-shrink-0">
@@ -120,7 +120,7 @@ export default function WalletConnect() {
 
         {/* Defly Wallet */}
         <div 
-          className="flex items-center border-b border-[#E5E7EB] py-4 cursor-pointer hover:bg-gray-50 px-2 -mx-2 rounded transition-colors group"
+          className="flex items-center border-b border-[#E5E7EB] py-4 cursor-pointer hover:bg-gray-50 hover:shadow-sm px-2 -mx-2 rounded transition-colors group"
           onClick={() => handleConnect('defly')}
         >
           <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center mr-3 flex-shrink-0">
@@ -132,7 +132,7 @@ export default function WalletConnect() {
 
         {/* WalletConnect */}
         <div 
-          className="flex items-center border-b border-[#E5E7EB] py-4 cursor-pointer hover:bg-gray-50 px-2 -mx-2 rounded transition-colors group"
+          className="flex items-center border-b border-[#E5E7EB] py-4 cursor-pointer hover:bg-gray-50 hover:shadow-sm px-2 -mx-2 rounded transition-colors group"
           onClick={() => handleConnect('walletconnect')}
         >
           <div className="w-8 h-8 rounded-full bg-[#3B99FC] flex items-center justify-center mr-3 flex-shrink-0">
