@@ -11,6 +11,7 @@ import {
 import DepositForm from '../components/DepositForm'
 import WithdrawForm from '../components/WithdrawForm'
 import TransactionHistory from '../components/TransactionHistory'
+import MilestoneCards from '../components/MilestoneCard'
 
 const VAULT_TYPES = [
   { id: 'personal', icon: '\u{1F3E6}', name: 'Personal Savings', desc: 'Build your wealth' },
@@ -243,6 +244,13 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
+        {/* MILESTONE BADGES */}
+        <MilestoneCards
+          savedAlgo={savedAlgo}
+          currentMilestone={userStats.milestone}
+          onBadgeClaimed={refreshData}
+        />
 
         {/* DEPOSIT + WITHDRAW */}
         <div className="flex items-center gap-4">
