@@ -1,6 +1,9 @@
 import WalletConnect from './components/WalletConnect';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useWallet } from '@txnlab/use-wallet-react';
+import Dashboard from './pages/Dashboard';
 
-function App() {
+function Landing() {
   return (
     <div className="flex h-screen w-full bg-white font-sans overflow-hidden">
       {/* LEFT HALF */}
@@ -43,6 +46,19 @@ function App() {
         </div>
       </div>
     </div>
+  );
+}
+
+function App() {
+  const { activeAddress } = useWallet();
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={activeAddress ? <Navigate to="/dashboard" replace /> : <Landing />} />
+        <Route path="/dashboard" element={activeAddress ? <Dashboard /> : <Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
