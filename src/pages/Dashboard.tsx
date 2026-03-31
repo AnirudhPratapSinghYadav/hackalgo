@@ -15,10 +15,10 @@ import MilestoneCards from '../components/MilestoneCard'
 import SavingsCoach from '../components/SavingsCoach'
 
 const VAULT_TYPES = [
-  { id: 'personal', icon: '\u{1F3E6}', name: 'Personal Savings', desc: 'Build your wealth' },
-  { id: 'harvest', icon: '\u{1F33E}', name: 'Harvest Vault', desc: 'For seasonal earners' },
-  { id: 'emergency', icon: '\u{1F6A8}', name: 'Emergency Fund', desc: 'Disaster-ready savings' },
-  { id: 'remittance', icon: '\u{1F4B8}', name: 'Remittance Vault', desc: 'Send across borders' },
+  { id: 'personal', icon: '\u{1F3E6}', name: 'Personal Savings', desc: 'Long-term wealth building', accent: 'from-blue-500 to-indigo-600', border: 'border-blue-400', bg: 'bg-blue-50', tag: 'Steady Growth' },
+  { id: 'harvest', icon: '\u{1F33E}', name: 'Harvest Vault', desc: 'Seasonal income protection', accent: 'from-amber-500 to-yellow-500', border: 'border-amber-400', bg: 'bg-amber-50', tag: 'Seasonal' },
+  { id: 'emergency', icon: '\u{1F6A8}', name: 'Emergency Fund', desc: 'Crisis-proof blockchain reserve', accent: 'from-red-500 to-rose-500', border: 'border-red-400', bg: 'bg-red-50', tag: 'Safety Net' },
+  { id: 'remittance', icon: '\u{1F4B8}', name: 'Remittance Vault', desc: 'Cross-border transfer buffer', accent: 'from-emerald-500 to-teal-500', border: 'border-emerald-400', bg: 'bg-emerald-50', tag: 'Global' },
 ] as const
 
 const MILESTONES = [
@@ -210,43 +210,101 @@ export default function Dashboard() {
 
         {/* VAULT TYPE SELECTOR */}
         <div>
-          <h2 className="text-gray-900 font-bold text-lg mb-3 tracking-tight">Choose Vault Type</h2>
+          <h2 className="text-gray-900 font-bold text-lg mb-3 tracking-tight">Choose Your Vault Strategy</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {VAULT_TYPES.map((v) => (
-              <button
-                key={v.id}
-                onClick={() => setVaultType(v.id)}
-                className={`text-left p-4 rounded-2xl border-2 transition-all duration-200 group ${
-                  vaultType === v.id
-                    ? 'border-[#2563EB] bg-blue-50/60 card-shadow glow-blue'
-                    : 'border-gray-100 hover:border-gray-200 bg-white hover:card-shadow'
-                }`}
-              >
-                <div className="text-2xl mb-2 group-hover:scale-110 transition-transform inline-block">{v.icon}</div>
-                <div className="font-semibold text-sm text-gray-900">{v.name}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{v.desc}</div>
-              </button>
-            ))}
+            {VAULT_TYPES.map((v) => {
+              const selected = vaultType === v.id
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => setVaultType(v.id)}
+                  className={`relative text-left p-5 rounded-2xl border-2 transition-all duration-300 group overflow-hidden ${
+                    selected ? `${v.border} card-shadow` : 'border-gray-100 hover:border-gray-200 bg-white hover:card-shadow'
+                  }`}
+                >
+                  {selected && <div className={`absolute inset-0 bg-gradient-to-br ${v.accent} opacity-[0.07]`} />}
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-2xl group-hover:scale-110 transition-transform inline-block">{v.icon}</span>
+                      {selected && <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-gradient-to-r ${v.accent} text-white`}>{v.tag}</span>}
+                    </div>
+                    <div className="font-bold text-sm text-gray-900">{v.name}</div>
+                    <div className="text-xs text-gray-500 mt-1 leading-relaxed">{v.desc}</div>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-100 p-5 bg-white card-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-gray-900 text-base">Pack A Winning Features</h3>
-            <span className="text-xs text-gray-500">Live on-chain modules</span>
+        {/* PACK A — WINNING FEATURES */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-gray-900 font-bold text-lg tracking-tight">Blockchain-Powered Features</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Real on-chain smart contract modules — not simulations</p>
+            </div>
+            <span className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live on Algorand
+            </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button onClick={() => navigate('/pact')} className="text-left rounded-xl border border-gray-100 bg-gradient-to-br from-violet-50 to-white p-4 hover:shadow-sm">
-              <div className="text-sm font-semibold text-gray-900">Savings Pact</div>
-              <div className="text-xs text-gray-500 mt-1">2-person accountability with penalty flow.</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* SAVINGS PACT */}
+            <button onClick={() => navigate('/pact')} className="group relative text-left rounded-2xl overflow-hidden border border-violet-200/60 hover:border-violet-300 transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/10 hover:-translate-y-0.5">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-indigo-700 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" />
+              <div className="relative p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  </div>
+                  <svg className="w-5 h-5 text-violet-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </div>
+                <h3 className="font-bold text-gray-900 text-base mb-1.5">Savings Pact</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-3">Two wallets commit to saving together. Miss a deposit and the smart contract auto-penalizes you into your partner's vault.</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full border border-violet-100">Social Accountability</span>
+                  <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">2-Person</span>
+                </div>
+              </div>
             </button>
-            <button onClick={() => navigate('/temptation-lock')} className="text-left rounded-xl border border-gray-100 bg-gradient-to-br from-rose-50 to-white p-4 hover:shadow-sm">
-              <div className="text-sm font-semibold text-gray-900">Temptation Lock</div>
-              <div className="text-xs text-gray-500 mt-1">Early withdraw penalty to chosen sink.</div>
+
+            {/* TEMPTATION LOCK */}
+            <button onClick={() => navigate('/temptation-lock')} className="group relative text-left rounded-2xl overflow-hidden border border-red-200/60 hover:border-red-300 transition-all duration-300 hover:shadow-lg hover:shadow-red-500/10 hover:-translate-y-0.5">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-orange-500 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" />
+              <div className="relative p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-lg shadow-red-500/20">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                  </div>
+                  <svg className="w-5 h-5 text-red-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </div>
+                <h3 className="font-bold text-gray-900 text-base mb-1.5">Temptation Lock</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-3">Set your goal and design your own punishment. Withdraw early and the penalty automatically goes to charity, burn, or a friend.</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">Behavioral Economics</span>
+                  <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">Self-Enforced</span>
+                </div>
+              </div>
             </button>
-            <button onClick={() => navigate('/dream-board')} className="text-left rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50 to-white p-4 hover:shadow-sm">
-              <div className="text-sm font-semibold text-gray-900">Dream Board</div>
-              <div className="text-xs text-gray-500 mt-1">Store your goal image + title on-chain.</div>
+
+            {/* DREAM BOARD */}
+            <button onClick={() => navigate('/dream-board')} className="group relative text-left rounded-2xl overflow-hidden border border-cyan-200/60 hover:border-cyan-300 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 hover:-translate-y-0.5">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-600 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" />
+              <div className="relative p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  </div>
+                  <svg className="w-5 h-5 text-cyan-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </div>
+                <h3 className="font-bold text-gray-900 text-base mb-1.5">Dream Board</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-3">Upload your dream goal image. It starts fully blurred and becomes crystal clear as your savings grow. Stored on Algorand forever.</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-100">Goal Visualization</span>
+                  <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">On-Chain</span>
+                </div>
+              </div>
             </button>
           </div>
         </div>
