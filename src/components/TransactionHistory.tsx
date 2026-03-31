@@ -12,6 +12,10 @@ interface Txn {
   action: string
   timestamp: number
   loraUrl: string
+  confirmedRound?: number
+  group?: string
+  groupSize?: number
+  method?: string
 }
 
 function formatTime(ts: number) {
@@ -35,6 +39,7 @@ function txStyle(action: string, type: string) {
 export default function TransactionHistory({ address }: Props) {
   const [txns, setTxns] = useState<Txn[]>([])
   const [loading, setLoading] = useState(true)
+  const [openGroup, setOpenGroup] = useState<string | null>(null)
 
   const fetchHistory = useCallback(() => {
     setLoading(true)
@@ -64,6 +69,59 @@ export default function TransactionHistory({ address }: Props) {
           </button>
         </div>
       </div>
+
+      {openGroup && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setOpenGroup(null)}>
+          <div className="w-full max-w-2xl bg-white rounded-2xl overflow-hidden border border-white/10 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Explorer proof</p>
+                <h3 className="text-lg font-extrabold text-gray-900 tracking-tight">Transaction group</h3>
+              </div>
+              <button onClick={() => setOpenGroup(null)} className="w-9 h-9 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              <p className="text-xs text-gray-500">Group ID</p>
+              <div className="mt-1 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                <p className="font-mono text-xs text-gray-700 break-all">{openGroup}</p>
+                <button
+                  onClick={() => navigator.clipboard.writeText(openGroup)}
+                  className="text-xs font-semibold text-[#2563EB] hover:underline whitespace-nowrap"
+                >
+                  Copy
+                </button>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Transactions in this group</p>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {txns.filter((t) => t.group === openGroup).map((t) => (
+                    <div key={t.txId} className="p-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{t.action}{t.method ? ` · ${t.method}` : ''}</p>
+                        <p className="text-[11px] font-mono text-gray-500">{t.txId}</p>
+                      </div>
+                      <a
+                        href={t.loraUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-semibold text-[#2563EB] hover:underline whitespace-nowrap"
+                      >
+                        View on Lora
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="p-10 text-center">
@@ -100,6 +158,7 @@ export default function TransactionHistory({ address }: Props) {
                       <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-semibold ${style.bg} ${style.text}`}>
                         {style.label}
                       </span>
+                      {t.method && <p className="text-[10px] text-gray-400 mt-1">{t.method}</p>}
                     </td>
                     <td className="px-6 py-4 text-right font-semibold text-gray-900">
                       {t.amount > 0 ? `${(t.amount / 1_000_000).toFixed(2)} ALGO` : '\u2014'}
@@ -108,15 +167,25 @@ export default function TransactionHistory({ address }: Props) {
                       {t.txId.slice(0, 8)}...{t.txId.slice(-4)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <a
-                        href={t.loraUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-[#2563EB] hover:underline font-semibold"
-                      >
-                        View
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                      </a>
+                      <div className="flex items-center justify-end gap-3">
+                        {t.group && (t.groupSize ?? 0) > 1 && (
+                          <button
+                            className="text-xs font-semibold text-gray-500 hover:text-gray-900 hover:underline"
+                            onClick={() => setOpenGroup(t.group!)}
+                          >
+                            Group ({t.groupSize})
+                          </button>
+                        )}
+                        <a
+                          href={t.loraUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-[#2563EB] hover:underline font-semibold"
+                        >
+                          Lora
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 )

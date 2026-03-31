@@ -168,6 +168,14 @@ export function getExplorerAssetUrl(assetId: number | string): string {
   return `${getLoraBaseUrl()}/asset/${assetId}`
 }
 
+export function getExplorerAccountUrl(address: string): string {
+  return `${getLoraBaseUrl()}/account/${address}`
+}
+
+export function getExplorerApplicationUrl(appId: number | string): string {
+  return `${getLoraBaseUrl()}/application/${appId}`
+}
+
 export function getAlgodClient(): Algodv2 {
   assertConfig()
   if (import.meta.env.DEV && !loggedVaultConfig) {
@@ -613,7 +621,18 @@ export async function getUserExtraState(address: string): Promise<{
 export async function getTransactionHistory(
   address: string,
   limit: number = 10,
-): Promise<Array<{ txId: string; amount: number; type: string; timestamp: number; action: string; loraUrl: string }>> {
+): Promise<Array<{
+  txId: string
+  amount: number
+  type: string
+  timestamp: number
+  action: string
+  loraUrl: string
+  confirmedRound?: number
+  group?: string
+  groupSize?: number
+  method?: string
+}>> {
   const indexer = getIndexerClient()
   const vaultAddr = getVaultAppAddress()
   // Query by account only (not `application-id` alone): deposit groups include a pay txn
@@ -621,6 +640,41 @@ export async function getTransactionHistory(
   const res = (await indexer.searchForTransactions().address(address).limit(Math.max(40, limit * 5)).do()) as any
   const txns = res?.transactions ?? []
   const byId = new Map<string, any>(txns.map((t: any) => [t?.id, t]))
+  const groupCounts = new Map<string, number>()
+  for (const t of txns) {
+    const g = t?.group
+    if (typeof g === 'string' && g.length > 0) groupCounts.set(g, (groupCounts.get(g) ?? 0) + 1)
+  }
+
+  const selectorHexToMethod: Record<string, string> = {
+    [selectorHex(SELECTOR_OPT_IN)]: 'opt_in',
+    [selectorHex(SELECTOR_DEPOSIT)]: 'deposit',
+    [selectorHex(SELECTOR_CLAIM_BADGE)]: 'claim_badge',
+    [selectorHex(SELECTOR_WITHDRAW)]: 'withdraw',
+    [selectorHex(SELECTOR_WITHDRAW_LEGACY)]: 'withdraw (legacy)',
+    [selectorHex(SELECTOR_SETUP_PACT)]: 'setup_savings_pact',
+    [selectorHex(SELECTOR_APPLY_PACT_PENALTY)]: 'apply_pact_penalty',
+    [selectorHex(SELECTOR_SET_LOCK)]: 'set_temptation_lock',
+    [selectorHex(SELECTOR_DISABLE_LOCK)]: 'disable_temptation_lock',
+    [selectorHex(SELECTOR_SET_DREAM)]: 'set_dream_board',
+  }
+
+  const decodeMethod = (t: any): string | undefined => {
+    if (t?.['tx-type'] !== 'appl') return undefined
+    const appId = t?.['application-transaction']?.['application-id']
+    if (appId !== APP_ID) return undefined
+    const arg0 = t?.['application-transaction']?.['application-args']?.[0]
+    if (typeof arg0 !== 'string' || arg0.length === 0) return undefined
+    try {
+      const raw = atob(arg0)
+      const bytes = new Uint8Array(raw.length)
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+      const hex = selectorHex(bytes)
+      return selectorHexToMethod[hex] ?? `method ${hex}`
+    } catch {
+      return undefined
+    }
+  }
 
   const classifyAction = (t: any): string => {
     const type = t?.['tx-type']
@@ -644,13 +698,25 @@ export async function getTransactionHistory(
     return type ?? 'UNKNOWN'
   }
 
-  type HistoryItem = { txId: string; amount: number; type: string; timestamp: number; action: string; loraUrl: string }
+  type HistoryItem = {
+    txId: string
+    amount: number
+    type: string
+    timestamp: number
+    action: string
+    loraUrl: string
+    confirmedRound?: number
+    group?: string
+    groupSize?: number
+    method?: string
+  }
   const mapped: HistoryItem[] = txns.map((t: any) => {
     const txId = t.id as string
     const amount = t?.['payment-transaction']?.amount ?? 0
     const type = t?.['tx-type'] ?? 'UNKNOWN'
     const timestamp = t?.['round-time'] ?? 0
     const action = classifyAction(t)
+    const group = typeof t?.group === 'string' ? t.group : undefined
     return {
       txId,
       amount,
@@ -658,6 +724,10 @@ export async function getTransactionHistory(
       timestamp,
       action,
       loraUrl: getExplorerTransactionUrl(txId),
+      confirmedRound: typeof t?.['confirmed-round'] === 'number' ? t['confirmed-round'] : undefined,
+      group,
+      groupSize: group ? groupCounts.get(group) : undefined,
+      method: decodeMethod(t),
     }
   })
   return mapped
