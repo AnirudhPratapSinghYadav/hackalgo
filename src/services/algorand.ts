@@ -59,6 +59,10 @@ const SELECTOR_WITHDRAW_LEGACY = Uint8Array.from([0x21, 0xf1, 0xdd, 0xff])
 type VaultContractMode = 'legacy_minimal' | 'full_pack'
 let cachedMode: VaultContractMode | null = null
 
+export async function getContractMode(): Promise<VaultContractMode> {
+  return await detectContractMode()
+}
+
 function selectorHex(selector: Uint8Array): string {
   return Array.from(selector)
     .map((b) => b.toString(16).padStart(2, '0'))

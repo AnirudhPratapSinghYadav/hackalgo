@@ -15,6 +15,7 @@ import MilestoneCards from '../components/MilestoneCard'
 import ProgressJourney from '../components/ProgressJourney'
 import AIChatbot from '../components/AIChatbot'
 import { generateVaultSummary, type VaultSummaryType } from '../services/aiService'
+import { getContractMode } from '../services/algorand'
 
 const MILESTONES = [
   { level: 1, name: 'Vault Starter', threshold: 10 },
@@ -42,6 +43,7 @@ export default function Dashboard() {
   const [summaryText, setSummaryText] = useState<string>('')
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [mode, setMode] = useState<'legacy_minimal' | 'full_pack' | null>(null)
 
   const activeWallet = wallets?.find((w) => w.isActive) ?? wallets?.find((w) => w.isConnected)
 
@@ -62,6 +64,10 @@ export default function Dashboard() {
   useEffect(() => {
     refreshData()
   }, [refreshData])
+
+  useEffect(() => {
+    getContractMode().then(setMode).catch(() => setMode('legacy_minimal'))
+  }, [])
 
   if (!activeAddress) return <Navigate to="/" replace />
 
@@ -184,6 +190,7 @@ export default function Dashboard() {
       tagColor: 'text-blue-700 bg-blue-50 border-blue-100',
       link: '/vault/guardian',
       summaryType: 'guardian' as const,
+      requiresFullPack: true,
       icon: (
         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
       ),
@@ -198,6 +205,7 @@ export default function Dashboard() {
       tagColor: 'text-emerald-700 bg-emerald-50 border-emerald-100',
       link: '/vault/community',
       summaryType: 'community' as const,
+      requiresFullPack: true,
       icon: (
         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
       ),
@@ -212,6 +220,7 @@ export default function Dashboard() {
       tagColor: 'text-amber-700 bg-amber-50 border-amber-100',
       link: '/pact',
       summaryType: 'pact' as const,
+      requiresFullPack: true,
       icon: (
         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
       ),
@@ -283,8 +292,14 @@ export default function Dashboard() {
             {VAULT_TYPES.map((vt) => (
               <button
                 key={vt.title}
-                onClick={() => navigate(vt.link)}
-                className={`group relative text-left rounded-2xl overflow-hidden border ${vt.border} transition-all duration-300 hover:shadow-lg ${vt.shadow} hover:-translate-y-0.5 bg-white`}
+                onClick={() => {
+                  if (vt.requiresFullPack && mode === 'legacy_minimal') return
+                  navigate(vt.link)
+                }}
+                disabled={vt.requiresFullPack && mode === 'legacy_minimal'}
+                className={`group relative text-left rounded-2xl overflow-hidden border ${vt.border} transition-all duration-300 hover:shadow-lg ${vt.shadow} hover:-translate-y-0.5 bg-white ${
+                  vt.requiresFullPack && mode === 'legacy_minimal' ? 'opacity-50 cursor-not-allowed hover:-translate-y-0' : ''
+                }`}
               >
                 <div className="relative p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -299,6 +314,11 @@ export default function Dashboard() {
                     <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${vt.tagColor}`}>
                       {vt.tag}
                     </span>
+                    {vt.requiresFullPack && mode === 'legacy_minimal' ? (
+                      <span className="text-[11px] font-semibold text-gray-400">
+                        Upgrade required
+                      </span>
+                    ) : (
                     <button
                       type="button"
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); openSummary(vt.summaryType) }}
@@ -306,6 +326,7 @@ export default function Dashboard() {
                     >
                       Gemini summary
                     </button>
+                    )}
                   </div>
                 </div>
               </button>
