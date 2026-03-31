@@ -1,14 +1,20 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { WalletProvider, NetworkId, WalletId, WalletManager } from '@txnlab/use-wallet-react'
+import '@perawallet/connect'
+import '@blockshake/defly-connect'
+import '@walletconnect/modal'
+import '@walletconnect/sign-client'
 import App from './App.tsx'
 import './index.css'
+
+const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '1234567890abcdef1234567890abcdef';
 
 const walletManager = new WalletManager({
   wallets: [
     WalletId.PERA,
     WalletId.DEFLY,
-    WalletId.WALLETCONNECT
+    { id: WalletId.WALLETCONNECT, options: { projectId } }
   ],
   network: NetworkId.TESTNET
 })

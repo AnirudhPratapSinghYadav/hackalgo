@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWallet } from '@txnlab/use-wallet-react';
 import { getBalance } from '../services/algorand';
 
 export default function WalletConnect() {
-  const { wallets, activeAddress, activeAccount } = useWallet();
+  const { wallets, activeAddress } = useWallet();
   const [balance, setBalance] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeAddress) {
@@ -14,13 +15,21 @@ export default function WalletConnect() {
     }
   }, [activeAddress]);
 
-  const handleConnect = (walletId: string) => {
-      const wallet = wallets?.find(w => w.id === walletId);
+  const handleConnect = async (walletId: string) => {
+      if (isConnecting) return;
+      const wallet = wallets?.find(w => w.id === walletId || w.id.toLowerCase() === walletId.toLowerCase());
       if (wallet) {
         if (wallet.isConnected) {
             wallet.setActive();
         } else {
-            wallet.connect();
+            setIsConnecting(walletId);
+            try {
+               await wallet.connect();
+            } catch (e) {
+               console.error('Wallet connection failed:', e);
+            } finally {
+               setIsConnecting(null);
+            }
         }
       }
   };
@@ -108,37 +117,55 @@ export default function WalletConnect() {
         
         {/* Pera Wallet */}
         <div 
-          className="flex items-center border-b border-[#E5E7EB] py-4 cursor-pointer hover:bg-gray-50 hover:shadow-sm px-2 -mx-2 rounded transition-colors group"
+          className={`flex items-center border-b border-[#E5E7EB] py-4 px-2 -mx-2 rounded transition-colors group ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50 hover:shadow-sm'}`}
           onClick={() => handleConnect('pera')}
         >
           <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center mr-3 flex-shrink-0">
-             <span className="text-white text-xs font-bold">P</span>
+             {isConnecting === 'pera' ? (
+               <svg className="animate-spin w-4 h-4 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+             ) : (
+               <span className="text-white text-xs font-bold">P</span>
+             )}
           </div>
-          <span className="font-medium text-[#111827]">Pera Wallet</span>
+          <span className="font-medium text-[#111827]">
+            {isConnecting === 'pera' ? 'Connecting...' : 'Pera Wallet'}
+          </span>
           <svg className="w-5 h-5 ml-auto text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
         </div>
 
         {/* Defly Wallet */}
         <div 
-          className="flex items-center border-b border-[#E5E7EB] py-4 cursor-pointer hover:bg-gray-50 hover:shadow-sm px-2 -mx-2 rounded transition-colors group"
+          className={`flex items-center border-b border-[#E5E7EB] py-4 px-2 -mx-2 rounded transition-colors group ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50 hover:shadow-sm'}`}
           onClick={() => handleConnect('defly')}
         >
           <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center mr-3 flex-shrink-0">
-             <span className="text-white text-xs font-bold">D</span>
+             {isConnecting === 'defly' ? (
+               <svg className="animate-spin w-4 h-4 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+             ) : (
+               <span className="text-white text-xs font-bold">D</span>
+             )}
           </div>
-          <span className="font-medium text-[#111827]">Defly Wallet</span>
+          <span className="font-medium text-[#111827]">
+            {isConnecting === 'defly' ? 'Connecting...' : 'Defly Wallet'}
+          </span>
           <svg className="w-5 h-5 ml-auto text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
         </div>
 
         {/* WalletConnect */}
         <div 
-          className="flex items-center border-b border-[#E5E7EB] py-4 cursor-pointer hover:bg-gray-50 hover:shadow-sm px-2 -mx-2 rounded transition-colors group"
+          className={`flex items-center border-b border-[#E5E7EB] py-4 px-2 -mx-2 rounded transition-colors group ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50 hover:shadow-sm'}`}
           onClick={() => handleConnect('walletconnect')}
         >
           <div className="w-8 h-8 rounded-full bg-[#3B99FC] flex items-center justify-center mr-3 flex-shrink-0">
-             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+             {isConnecting === 'walletconnect' ? (
+               <svg className="animate-spin w-4 h-4 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+             ) : (
+               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+             )}
           </div>
-          <span className="font-medium text-[#111827]">WalletConnect</span>
+          <span className="font-medium text-[#111827]">
+            {isConnecting === 'walletconnect' ? 'Connecting...' : 'WalletConnect'}
+          </span>
           <svg className="w-5 h-5 ml-auto text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
         </div>
 

@@ -10,7 +10,12 @@
   },
   "dependencies": {
     "@algorandfoundation/algokit-utils": "^6.0.0",
+    "@blockshake/defly-connect": "^1.2.1",
+    "@perawallet/connect": "^1.5.2",
     "@txnlab/use-wallet-react": "^3.3.0",
+    "@walletconnect/modal": "^2.7.0",
+    "@walletconnect/sign-client": "^2.23.9",
+    "@walletconnect/types": "^2.23.9",
     "algosdk": "^2.9.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
