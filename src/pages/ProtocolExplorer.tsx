@@ -571,7 +571,13 @@ export default function ProtocolExplorer() {
                                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                                   Note {r.note.arc69 ? '(ARC-69 detected)' : ''}
                                 </p>
-                                <p className="text-xs text-gray-700 mt-1 break-all font-mono">{r.note.utf8 ?? '—'}</p>
+                                {r.note.json ? (
+                                  <pre className="text-[11px] text-gray-800 mt-2 whitespace-pre-wrap break-words font-mono leading-relaxed">
+                                    {JSON.stringify(r.note.json, null, 2)}
+                                  </pre>
+                                ) : (
+                                  <p className="text-xs text-gray-700 mt-1 break-all font-mono">{r.note.utf8 ?? '—'}</p>
+                                )}
                               </div>
                             )}
                             {(r.logs?.length ?? 0) > 0 && (
@@ -606,7 +612,9 @@ export default function ProtocolExplorer() {
                   </details>
 
                   <details className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                    <summary className="text-sm font-semibold text-gray-800 cursor-pointer">Boxes (verified on-chain)</summary>
+                    <summary className="text-sm font-semibold text-gray-800 cursor-pointer">
+                      Boxes (verified on-chain{boxProof ? boxProof.used === false ? ' — none' : ` — ${boxProof.boxes.length}` : ''})
+                    </summary>
                     <p className="text-xs text-gray-600 mt-2">
                       Source: <span className="font-semibold">algod</span> → <span className="font-mono">getApplicationBoxes()</span> and <span className="font-mono">getApplicationBoxByName()</span>.
                     </p>

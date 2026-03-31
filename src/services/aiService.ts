@@ -111,6 +111,36 @@ export async function generatePactGuide(
   return await sendChatMessage([], request, ctx)
 }
 
+export async function generateTemptationLockGuide(
+  params: {
+    goalAlgo: number
+    penaltyPct: number
+    penaltySink?: string
+    lockEnabled?: boolean
+  },
+  ctx: UserContext,
+): Promise<string> {
+  const { goalAlgo, penaltyPct, penaltySink, lockEnabled } = params
+  const request = [
+    'Explain the Temptation Lock on this page using the real values below.',
+    'Do not invent any data, rules, or outcomes.',
+    '',
+    'Lock parameters (from on-chain local state or user inputs for the next on-chain transaction):',
+    `- status: ${lockEnabled ? 'ACTIVE' : 'NOT SET'}`,
+    `- goal: ${Number.isFinite(goalAlgo) ? goalAlgo.toFixed(2) : 'unknown'} ALGO`,
+    `- early-withdraw penalty: ${Number.isFinite(penaltyPct) ? penaltyPct.toFixed(2) : 'unknown'}%`,
+    `- penalty destination: ${penaltySink ? penaltySink : 'unknown'}`,
+    '',
+    'Output format:',
+    '- 6 bullets max',
+    '- Each bullet should be 1 sentence',
+    '- Include 2 explicit next actions (e.g., "Activate lock", "Make a deposit", "Withdraw only after goal")',
+    '- Mention that enforcement is on-chain and verifiable on Lora',
+    '- Be product-grade and concise (no hype)',
+  ].join('\n')
+  return await sendChatMessage([], request, ctx)
+}
+
 export async function sendChatMessage(
   history: ChatMessage[],
   newMessage: string,

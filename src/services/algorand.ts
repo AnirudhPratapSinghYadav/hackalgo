@@ -283,10 +283,12 @@ async function signAndSendGroup(signTransactions: SignTransactionsFn, txns: algo
 export async function optInToVault(signTransactions: SignTransactionsFn, address: string): Promise<string> {
   const spBase = await getSuggestedParams()
   const sp = withFlatFee(spBase, FEE_OPT_IN)
+  const note = buildActionNote('opt_in', { user: address })
   const txn = algosdk.makeApplicationOptInTxnFromObject({
     from: address,
     appIndex: APP_ID,
     appArgs: [SELECTOR_OPT_IN],
+    note,
     suggestedParams: sp,
   })
   const signed = await signTransactions([encodeTxnBytes(txn)])
@@ -893,6 +895,7 @@ export async function setDreamBoard(signTransactions: SignTransactionsFn, addres
   if (mode !== 'full_pack') return requiresFullPack('Dream Board')
   const spBase = await getSuggestedParams()
   const sp = withFlatFee(spBase, FEE_APP_STANDARD)
+  const note = buildActionNote('dream_set', { user: address })
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
@@ -901,6 +904,7 @@ export async function setDreamBoard(signTransactions: SignTransactionsFn, addres
       encodeByteArrayArg(dreamUri),
       encodeByteArrayArg(dreamTitle),
     ],
+    note,
     suggestedParams: sp,
   })
   const signed = await signTransactions([encodeTxnBytes(txn)])

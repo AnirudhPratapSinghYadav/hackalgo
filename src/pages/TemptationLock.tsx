@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { disableTemptationLock, getExplorerTransactionUrl, getUserExtraState, setTemptationLock } from '../services/algorand'
+import { disableTemptationLock, getExplorerTransactionUrl, getUserExtraState, getUserStats, setTemptationLock } from '../services/algorand'
+import { generateTemptationLockGuide } from '../services/aiService'
 
 const DESTINATIONS = [
   { id: 'burn', label: 'Burn Forever', desc: 'Tokens destroyed permanently', icon: '🔥', address: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ' },
@@ -21,6 +22,10 @@ export default function TemptationLock() {
   const [busy, setBusy] = useState(false)
   const [currentLock, setCurrentLock] = useState<{ lockEnabled: number; goalAmountMicro: number; penaltyBps: number; penaltySink: string } | null>(null)
   const [loadingLock, setLoadingLock] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(true)
+  const [guideLoading, setGuideLoading] = useState(false)
+  const [guideText, setGuideText] = useState<string>('')
+  const [guideError, setGuideError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!activeAddress) return
@@ -76,6 +81,44 @@ export default function TemptationLock() {
 
   const lockActive = currentLock?.lockEnabled === 1
   const pct = penaltyPct ?? 0
+
+  const onExplain = async () => {
+    if (!activeAddress) return
+    setGuideOpen(true)
+    setGuideLoading(true)
+    setGuideError(null)
+    setGuideText('')
+    try {
+      const goalNum = Number(goalAlgo)
+      const pctNum = Number(penaltyPct ?? 0)
+      if (!Number.isFinite(goalNum) || goalNum <= 0) throw new Error('Enter a valid savings goal first.')
+      if (!Number.isFinite(pctNum) || pctNum <= 0) throw new Error('Select a penalty percentage first.')
+      const sink = getSinkAddress()
+      const stats = await getUserStats(activeAddress)
+      const text = await generateTemptationLockGuide(
+        {
+          goalAlgo: goalNum,
+          penaltyPct: pctNum,
+          penaltySink: sink,
+          lockEnabled: lockActive,
+        },
+        {
+          totalSaved: stats.totalSaved / 1_000_000,
+          streak: stats.streak,
+          milestone: stats.milestone,
+          lockEnabled: lockActive,
+          goalAmount: goalNum,
+          penaltyPct: pctNum,
+          recentDeposits: 'unknown',
+        },
+      )
+      setGuideText(text)
+    } catch (e: any) {
+      setGuideError(e?.message ?? 'Could not generate explanation.')
+    } finally {
+      setGuideLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f8f9fb] font-sans">
@@ -192,22 +235,54 @@ export default function TemptationLock() {
             </div>
           </div>
 
-          {/* STATUS SIDEBAR */}
-          <div className="rounded-2xl bg-white border border-gray-100 p-6 card-shadow h-fit">
-            <h3 className="font-bold text-gray-900 text-sm mb-5 uppercase tracking-wider">Lock Status</h3>
-            <div className="flex items-center gap-3 mb-5">
-              <div className={`w-4 h-4 rounded-full ${lockActive ? 'bg-red-500 animate-pulse' : 'bg-gray-300'}`} />
-              <span className={`text-lg font-bold ${lockActive ? 'text-red-600' : 'text-gray-400'}`}>{lockActive ? 'LOCKED' : 'UNLOCKED'}</span>
-            </div>
-            {currentLock && currentLock.goalAmountMicro > 0 ? (
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between py-2 border-b border-gray-50"><span className="text-gray-500">Goal</span><span className="font-bold text-gray-900">{(currentLock.goalAmountMicro / 1_000_000).toFixed(0)} ALGO</span></div>
-                <div className="flex justify-between py-2 border-b border-gray-50"><span className="text-gray-500">Penalty Rate</span><span className="font-bold text-red-600">{(currentLock.penaltyBps / 100).toFixed(0)}%</span></div>
-                {currentLock.penaltySink && <div className="pt-2"><p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Penalty Destination</p><p className="text-xs text-gray-600 font-mono break-all bg-gray-50 rounded-lg px-3 py-2">{currentLock.penaltySink}</p></div>}
+          {/* STATUS + GUIDE SIDEBAR */}
+          <div className="space-y-6">
+            <div className="rounded-2xl bg-white border border-gray-100 p-6 card-shadow h-fit">
+              <h3 className="font-bold text-gray-900 text-sm mb-5 uppercase tracking-wider">Lock Status</h3>
+              <div className="flex items-center gap-3 mb-5">
+                <div className={`w-4 h-4 rounded-full ${lockActive ? 'bg-red-500 animate-pulse' : 'bg-gray-300'}`} />
+                <span className={`text-lg font-bold ${lockActive ? 'text-red-600' : 'text-gray-400'}`}>{lockActive ? 'LOCKED' : 'UNLOCKED'}</span>
               </div>
-            ) : (
-              <p className="text-sm text-gray-400">No lock configured yet. Set one above.</p>
-            )}
+              {currentLock && currentLock.goalAmountMicro > 0 ? (
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between py-2 border-b border-gray-50"><span className="text-gray-500">Goal</span><span className="font-bold text-gray-900">{(currentLock.goalAmountMicro / 1_000_000).toFixed(0)} ALGO</span></div>
+                  <div className="flex justify-between py-2 border-b border-gray-50"><span className="text-gray-500">Penalty Rate</span><span className="font-bold text-red-600">{(currentLock.penaltyBps / 100).toFixed(0)}%</span></div>
+                  {currentLock.penaltySink && <div className="pt-2"><p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Penalty Destination</p><p className="text-xs text-gray-600 font-mono break-all bg-gray-50 rounded-lg px-3 py-2">{currentLock.penaltySink}</p></div>}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">No lock configured yet. Set one above.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl bg-white border border-gray-100 p-6 card-shadow">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">Lock Summary (Gemini)</h3>
+                <button onClick={() => setGuideOpen((v) => !v)} className="text-xs font-semibold text-gray-500 hover:text-gray-900 hover:underline">
+                  {guideOpen ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Explanation is generated from your on-chain lock + current inputs. No made-up data.</p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={onExplain}
+                  disabled={guideLoading}
+                  className="px-4 py-2 rounded-xl bg-orange-50 text-orange-700 border border-orange-100 text-xs font-bold hover:bg-orange-100 disabled:opacity-50"
+                >
+                  {guideLoading ? 'Explaining…' : 'Explain this lock'}
+                </button>
+              </div>
+              {guideOpen && (
+                <div className="mt-3">
+                  {guideError && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{guideError}</p>}
+                  {guideText && (
+                    <div className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 whitespace-pre-wrap leading-relaxed">
+                      {guideText}
+                    </div>
+                  )}
+                  {!guideText && !guideError && <p className="text-xs text-gray-500">Tap “Explain this lock” to generate a concise, verifiable summary.</p>}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
