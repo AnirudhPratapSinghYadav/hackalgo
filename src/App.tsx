@@ -10,7 +10,7 @@ function Landing() {
       <div className="relative w-1/2 h-full hidden lg:block">
         <div 
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=1200&q=80')" }}
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80')" }}
         />
         <div className="absolute inset-0 bg-black/40" />
         
@@ -23,14 +23,14 @@ function Landing() {
         {/* Bottom-left text block */}
         <div className="absolute bottom-0 left-0 p-8 w-full max-w-xl">
           <h1 className="text-white font-bold text-3xl mb-3 leading-tight">
-            Protecting global supply chains with AI & blockchain
+            AI-Powered Savings Vault on Algorand
           </h1>
           <p className="text-white/80 text-sm mb-6 leading-relaxed">
-            Multi-agent risk assessment powered by Google Gemini, with immutable on-chain verification on Algorand.
+            Earn milestone badges, track your streak, and grow your savings with on-chain transparency powered by Algorand.
           </p>
           
           <div className="flex flex-wrap gap-2 mt-4">
-            {["Multi-Agent AI", "Box Storage", "Fraud Prevention", "Escrow Refunds"].map(pill => (
+            {["Milestone Badges", "Atomic Deposits", "On-Chain Stats", "NFT Rewards"].map(pill => (
               <span key={pill} className="bg-white/20 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap backdrop-blur-sm border border-white/10">
                 {pill}
               </span>

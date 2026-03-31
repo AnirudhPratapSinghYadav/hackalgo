@@ -9,6 +9,8 @@ import {
   optInToVault,
 } from '../services/algorand'
 import DepositForm from '../components/DepositForm'
+import WithdrawForm from '../components/WithdrawForm'
+import TransactionHistory from '../components/TransactionHistory'
 
 const VAULT_TYPES = [
   { id: 'personal', icon: '\u{1F3E6}', name: 'Personal Savings', desc: 'Build your wealth' },
@@ -44,6 +46,7 @@ export default function Dashboard() {
   const [optingIn, setOptingIn] = useState(false)
   const [vaultType, setVaultType] = useState('personal')
   const [showDeposit, setShowDeposit] = useState(false)
+  const [showWithdraw, setShowWithdraw] = useState(false)
 
   const activeWallet = wallets?.find((w) => w.isActive) ?? wallets?.find((w) => w.isConnected)
 
@@ -251,12 +254,16 @@ export default function Dashboard() {
             Deposit ALGO
           </button>
           <button
-            disabled={optedIn === false}
+            onClick={() => setShowWithdraw(true)}
+            disabled={optedIn === false || userStats.totalSaved === 0}
             className="text-sm text-gray-500 hover:text-gray-700 underline disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Withdraw
           </button>
         </div>
+
+        {/* TRANSACTION HISTORY */}
+        {activeAddress && <TransactionHistory address={activeAddress} />}
 
         <div className="text-xs text-gray-400 pb-4">
           Connected via {activeWallet?.metadata.name ?? 'wallet'} &middot; App {Number(import.meta.env.VITE_APP_ID)}
@@ -266,8 +273,18 @@ export default function Dashboard() {
       {/* DEPOSIT MODAL */}
       {showDeposit && (
         <DepositForm
+          vaultType={vaultType}
           onClose={() => setShowDeposit(false)}
           onSuccess={() => { setShowDeposit(false); refreshData() }}
+        />
+      )}
+
+      {/* WITHDRAW MODAL */}
+      {showWithdraw && (
+        <WithdrawForm
+          currentBalanceMicro={userStats.totalSaved}
+          onClose={() => setShowWithdraw(false)}
+          onSuccess={() => { setShowWithdraw(false); refreshData() }}
         />
       )}
     </div>
