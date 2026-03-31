@@ -1,16 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useWallet } from '@txnlab/use-wallet-react';
 import { getBalance } from '../services/algorand';
 
-const WALLETS = [
-  { id: 'pera', name: 'Pera Wallet', color: 'from-yellow-400 to-orange-400', letter: 'P' },
-  { id: 'defly', name: 'Defly Wallet', color: 'from-violet-500 to-purple-600', letter: 'D' },
-];
+const WALLET_UI: Record<string, { name: string; color: string; letter: string }> = {
+  pera: { name: 'Pera Wallet', color: 'from-yellow-400 to-orange-400', letter: 'P' },
+  defly: { name: 'Defly Wallet', color: 'from-violet-500 to-purple-600', letter: 'D' },
+}
 
 export default function WalletConnect() {
   const { wallets, activeAddress } = useWallet();
   const [balance, setBalance] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
+
+  // Do not hardcode available wallets; derive from WalletManager registry.
+  // We currently support Pera + Defly only (WalletConnect removed).
+  const connectWallets = useMemo(() => {
+    const list = (wallets ?? [])
+      .map((w) => ({ id: String(w.id).toLowerCase(), wallet: w }))
+      .filter((w) => w.id === 'pera' || w.id === 'defly')
+      .map((w) => ({
+        id: w.id,
+        wallet: w.wallet,
+        ui: WALLET_UI[w.id],
+      }))
+      .filter((w) => !!w.ui)
+
+    // Stable sort: Pera first, then Defly.
+    list.sort((a, b) => (a.id === 'pera' ? -1 : b.id === 'pera' ? 1 : 0))
+    return list
+  }, [wallets])
 
   useEffect(() => {
     if (activeAddress) {
@@ -98,23 +116,23 @@ export default function WalletConnect() {
       </p>
 
       <div className="flex flex-col gap-2">
-        {WALLETS.map((w) => (
+        {connectWallets.map((w) => (
           <button
             key={w.id}
             onClick={() => handleConnect(w.id)}
             disabled={!!isConnecting}
             className={`flex items-center w-full p-4 rounded-xl border border-gray-200 bg-white hover:border-gray-300 hover:card-shadow transition-all group ${isConnecting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
           >
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${w.color} flex items-center justify-center mr-3.5 flex-shrink-0`}>
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${w.ui.color} flex items-center justify-center mr-3.5 flex-shrink-0`}>
               {isConnecting === w.id ? (
                 <svg className="animate-spin w-5 h-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
               ) : (
-                <span className="text-white text-sm font-bold">{w.letter}</span>
+                <span className="text-white text-sm font-bold">{w.ui.letter}</span>
               )}
             </div>
             <div className="text-left">
               <span className="font-semibold text-gray-900 text-sm">
-                {isConnecting === w.id ? 'Connecting...' : w.name}
+                {isConnecting === w.id ? 'Connecting...' : w.ui.name}
               </span>
             </div>
             <svg className="w-5 h-5 ml-auto text-gray-300 group-hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
