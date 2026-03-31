@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { applyPactPenalty, getExplorerTransactionUrl, getPactConfig, setupSavingsPact } from '../services/algorand'
+import { applyPactPenalty, getExplorerTransactionUrl, getPactConfig, getUserStats, setupSavingsPact } from '../services/algorand'
 import { generatePactGuide } from '../services/aiService'
 
 export default function SavingsPact() {
@@ -66,8 +66,23 @@ export default function SavingsPact() {
   const onApplyPenalty = async () => {
     if (!partner || partner.length !== 58) { setStatus('Enter partner address first'); return }
     if (!Number.isFinite(penaltyNum) || penaltyNum <= 0) { setStatus('Enter a valid penalty amount'); return }
-    setBusyPenalty(true); setStatus('Applying penalty...')
+    setBusyPenalty(true); setStatus('Checking on-chain conditions…')
     try {
+      // Preflight: mirror contract asserts to avoid wasting a group submission.
+      const [p, stats] = await Promise.all([getPactConfig(), getUserStats(activeAddress)])
+      if (p.enabled !== 1) throw new Error('No active pact found on-chain.')
+      if (activeAddress !== p.userA && activeAddress !== p.userB) throw new Error('Your wallet is not a participant in the active pact.')
+      const expectedPartner = activeAddress === p.userA ? p.userB : p.userA
+      if (expectedPartner && partner !== expectedPartner) throw new Error('Partner address does not match the on-chain pact pair.')
+      const minPenaltyAlgo = p.penaltyAmountMicro / 1_000_000
+      if (penaltyNum + 1e-9 < minPenaltyAlgo) throw new Error(`Penalty must be at least ${minPenaltyAlgo.toFixed(2)} ALGO (from on-chain pact config).`)
+      const nowTs = Math.floor(Date.now() / 1000)
+      const dueTs = (stats.lastDeposit || 0) + (p.cadenceSeconds || 0)
+      if (stats.lastDeposit > 0 && p.cadenceSeconds > 0 && nowTs <= dueTs) {
+        const minsLeft = Math.max(0, Math.ceil((dueTs - nowTs) / 60))
+        throw new Error(`Cadence has not been missed yet. Try again in ~${minsLeft} minutes.`)
+      }
+      setStatus('Applying penalty (wallet signature required)…')
       const id = await applyPactPenalty(signTransactions, activeAddress, partner, penaltyNum)
       setTxId(id); setStatus('Penalty applied on-chain!')
     } catch (e: any) { setStatus(e?.message || 'Transaction failed') } finally { setBusyPenalty(false) }
