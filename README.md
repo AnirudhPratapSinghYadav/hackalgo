@@ -8,6 +8,12 @@ If it can’t be verified on-chain, we don’t show it as “real”.
 
 ---
 
+## Live deployment
+
+**Production (Vercel):** [https://algohack-phi.vercel.app/](https://algohack-phi.vercel.app/)
+
+---
+
 ## Story mode (what you’re seeing)
 
 You connect a wallet and opt into the vault app.

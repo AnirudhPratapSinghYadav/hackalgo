@@ -343,6 +343,10 @@ We attach structured JSON notes to transactions we construct so explorer viewers
 
 ## 17) Environment + deployment (Vercel readiness)
 
+### Live URL (GitHub / demo)
+
+- **Production:** [https://algohack-phi.vercel.app/](https://algohack-phi.vercel.app/)
+
 ### Environment variables (frontend)
 From `.env`:
 - `VITE_APP_ID=758024719`
