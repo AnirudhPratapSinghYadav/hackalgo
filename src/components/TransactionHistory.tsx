@@ -14,18 +14,19 @@ interface Txn {
 }
 
 function formatTime(ts: number) {
-  if (!ts) return '—'
+  if (!ts) return '\u2014'
   const d = new Date(ts * 1000)
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-function txTypeLabel(type: string) {
-  switch (type) {
-    case 'pay': return 'Payment'
-    case 'appl': return 'App Call'
-    case 'axfer': return 'Asset Transfer'
-    default: return type.toUpperCase()
-  }
+const TX_STYLES: Record<string, { label: string; bg: string; text: string }> = {
+  pay: { label: 'Payment', bg: 'bg-blue-50', text: 'text-blue-700' },
+  appl: { label: 'App Call', bg: 'bg-violet-50', text: 'text-violet-700' },
+  axfer: { label: 'Asset Transfer', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+}
+
+function txStyle(type: string) {
+  return TX_STYLES[type] ?? { label: type.toUpperCase(), bg: 'bg-gray-50', text: 'text-gray-600' }
 }
 
 export default function TransactionHistory({ address }: Props) {
@@ -41,63 +42,73 @@ export default function TransactionHistory({ address }: Props) {
   }, [address])
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100">
-        <h3 className="font-bold text-gray-900">Transaction History</h3>
+    <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden card-shadow">
+      <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
+            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+          </div>
+          <h3 className="font-bold text-gray-900">Transaction History</h3>
+        </div>
+        <span className="text-xs text-gray-400 font-medium">{txns.length} transactions</span>
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-sm text-gray-400">Loading transactions...</div>
+        <div className="p-10 text-center">
+          <div className="w-8 h-8 border-2 border-gray-200 border-t-[#2563EB] rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-400">Loading transactions...</p>
+        </div>
       ) : txns.length === 0 ? (
-        <div className="p-8 text-center">
-          <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-          <p className="text-sm text-gray-500 font-medium">No transactions yet</p>
+        <div className="p-10 text-center">
+          <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg className="w-7 h-7 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+          </div>
+          <p className="text-sm text-gray-600 font-medium">No transactions yet</p>
           <p className="text-xs text-gray-400 mt-1">Deposit ALGO to see your history here</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
-                <th className="px-5 py-3 font-medium">Time</th>
-                <th className="px-5 py-3 font-medium">Type</th>
-                <th className="px-5 py-3 font-medium text-right">Amount</th>
-                <th className="px-5 py-3 font-medium">Transaction</th>
-                <th className="px-5 py-3 font-medium text-right">Explorer</th>
+              <tr className="text-left text-xs text-gray-400 uppercase tracking-wider border-b border-gray-50">
+                <th className="px-6 py-3.5 font-semibold">Time</th>
+                <th className="px-6 py-3.5 font-semibold">Type</th>
+                <th className="px-6 py-3.5 font-semibold text-right">Amount</th>
+                <th className="px-6 py-3.5 font-semibold">Transaction</th>
+                <th className="px-6 py-3.5 font-semibold text-right">Explorer</th>
               </tr>
             </thead>
             <tbody>
-              {txns.map((t) => (
-                <tr key={t.txId} className="border-b border-gray-50 hover:bg-gray-50/50">
-                  <td className="px-5 py-3 text-gray-600 whitespace-nowrap">{formatTime(t.timestamp)}</td>
-                  <td className="px-5 py-3">
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                      t.type === 'pay' ? 'bg-blue-50 text-blue-700' :
-                      t.type === 'appl' ? 'bg-purple-50 text-purple-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
-                      {txTypeLabel(t.type)}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-right font-medium text-gray-900">
-                    {t.amount > 0 ? `${(t.amount / 1_000_000).toFixed(2)} ALGO` : '—'}
-                  </td>
-                  <td className="px-5 py-3 font-mono text-xs text-gray-500">
-                    {t.txId.slice(0, 8)}...{t.txId.slice(-4)}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <a
-                      href={t.loraUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-[#2563EB] hover:underline font-medium"
-                    >
-                      View
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                    </a>
-                  </td>
-                </tr>
-              ))}
+              {txns.map((t) => {
+                const style = txStyle(t.type)
+                return (
+                  <tr key={t.txId} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/60 transition-colors">
+                    <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{formatTime(t.timestamp)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-semibold ${style.bg} ${style.text}`}>
+                        {style.label}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                      {t.amount > 0 ? `${(t.amount / 1_000_000).toFixed(2)} ALGO` : '\u2014'}
+                    </td>
+                    <td className="px-6 py-4 font-mono text-xs text-gray-400">
+                      {t.txId.slice(0, 8)}...{t.txId.slice(-4)}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <a
+                        href={t.loraUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-[#2563EB] hover:underline font-semibold"
+                      >
+                        View
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                      </a>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

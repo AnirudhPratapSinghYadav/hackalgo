@@ -6,16 +6,31 @@ interface MilestoneData {
   level: number
   name: string
   threshold: number
-  color: string
-  bgColor: string
-  borderColor: string
   icon: string
+  gradient: string
+  glowClass: string
+  progressColor: string
 }
 
 const MILESTONES: MilestoneData[] = [
-  { level: 1, name: 'Vault Starter', threshold: 10, color: 'text-amber-700', bgColor: 'bg-amber-50', borderColor: 'border-amber-400', icon: '\u{1F949}' },
-  { level: 2, name: 'Vault Builder', threshold: 50, color: 'text-gray-500', bgColor: 'bg-gray-50', borderColor: 'border-gray-400', icon: '\u{1F948}' },
-  { level: 3, name: 'Vault Master', threshold: 100, color: 'text-yellow-600', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-400', icon: '\u{1F947}' },
+  {
+    level: 1, name: 'Vault Starter', threshold: 10, icon: '\u{1F949}',
+    gradient: 'from-amber-400 to-orange-500',
+    glowClass: 'shadow-[0_0_20px_rgba(245,158,11,0.25)]',
+    progressColor: 'from-amber-400 to-orange-500',
+  },
+  {
+    level: 2, name: 'Vault Builder', threshold: 50, icon: '\u{1F948}',
+    gradient: 'from-gray-300 to-gray-500',
+    glowClass: 'shadow-[0_0_20px_rgba(156,163,175,0.3)]',
+    progressColor: 'from-gray-400 to-gray-600',
+  },
+  {
+    level: 3, name: 'Vault Master', threshold: 100, icon: '\u{1F947}',
+    gradient: 'from-yellow-300 to-yellow-500',
+    glowClass: 'shadow-[0_0_20px_rgba(234,179,8,0.3)]',
+    progressColor: 'from-yellow-400 to-yellow-600',
+  },
 ]
 
 interface Props {
@@ -27,7 +42,7 @@ interface Props {
 export default function MilestoneCards({ savedAlgo, currentMilestone, onBadgeClaimed }: Props) {
   return (
     <div>
-      <h2 className="font-bold text-gray-900 text-lg mb-3">Milestone Badges</h2>
+      <h2 className="font-bold text-gray-900 text-lg mb-3 tracking-tight">Milestone Badges</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {MILESTONES.map((m) => (
           <SingleCard
@@ -86,52 +101,60 @@ function SingleCard({
     }
   }
 
-  const cardBorder = claimed
-    ? 'border-green-400 shadow-[0_0_12px_rgba(34,197,94,0.15)]'
+  const borderStyle = claimed
+    ? 'border-green-300 glow-green'
     : unlocked
-      ? `${milestone.borderColor} shadow-[0_0_12px_rgba(59,130,246,0.1)]`
-      : 'border-gray-200'
+      ? `border-[#2563EB]/40 glow-blue`
+      : 'border-gray-100'
 
   return (
     <>
-      <div className={`rounded-xl border-2 p-5 bg-white transition-all ${cardBorder}`}>
+      <div className={`rounded-2xl border-2 p-5 bg-white transition-all duration-300 hover:card-shadow-hover card-shadow ${borderStyle}`}>
+        {/* Badge icon + status */}
         <div className="flex items-center justify-between mb-4">
-          <span className="text-3xl">{milestone.icon}</span>
+          <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${milestone.gradient} flex items-center justify-center ${unlocked || claimed ? milestone.glowClass : ''}`}>
+            <span className="text-2xl">{milestone.icon}</span>
+          </div>
           {claimed ? (
-            <span className="text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">CLAIMED</span>
+            <span className="text-xs font-bold bg-green-50 text-green-600 px-3 py-1.5 rounded-full border border-green-100">CLAIMED</span>
           ) : unlocked ? (
-            <span className="text-xs font-semibold bg-blue-100 text-[#2563EB] px-2.5 py-1 rounded-full">UNLOCKED</span>
+            <span className="text-xs font-bold bg-blue-50 text-[#2563EB] px-3 py-1.5 rounded-full border border-blue-100 animate-pulse">UNLOCKED</span>
           ) : (
-            <span className="text-xs font-semibold bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">LOCKED</span>
+            <span className="text-xs font-bold bg-gray-50 text-gray-400 px-3 py-1.5 rounded-full border border-gray-100">LOCKED</span>
           )}
         </div>
 
-        <h3 className="font-bold text-gray-900 mb-1">{milestone.name}</h3>
-        <p className="text-sm text-gray-500 mb-3">{milestone.threshold} ALGO threshold</p>
+        <h3 className="font-bold text-gray-900 text-base mb-0.5">{milestone.name}</h3>
+        <p className="text-sm text-gray-500 mb-4">{milestone.threshold} ALGO threshold</p>
 
-        <div className="mb-3">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>{savedAlgo.toFixed(2)} ALGO</span>
-            <span>{milestone.threshold} ALGO</span>
+        {/* Progress */}
+        <div className="mb-4">
+          <div className="flex justify-between text-xs mb-1.5">
+            <span className="font-medium text-gray-600">{savedAlgo.toFixed(2)} ALGO</span>
+            <span className="font-medium text-gray-400">{milestone.threshold} ALGO</span>
           </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${claimed ? 'bg-green-500' : unlocked ? 'bg-[#2563EB]' : 'bg-gray-300'}`}
+              className={`h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r ${
+                claimed ? 'from-green-400 to-emerald-500' :
+                unlocked ? 'from-[#2563EB] to-[#7c3aed]' :
+                'from-gray-200 to-gray-300'
+              }`}
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="text-xs text-gray-400 mt-1">{progress.toFixed(0)}% complete</p>
+          <p className="text-xs text-gray-400 mt-1.5 font-medium">{progress.toFixed(0)}% complete</p>
         </div>
 
         {error && (
-          <p className="text-xs text-red-600 mb-2">{error}</p>
+          <p className="text-xs text-red-600 mb-2 bg-red-50 rounded-lg px-2.5 py-1.5">{error}</p>
         )}
 
         {canClaim && (
           <button
             onClick={handleClaim}
             disabled={claiming}
-            className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1d4ed8] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+            className="w-full py-3 bg-gradient-to-r from-[#2563EB] to-[#7c3aed] hover:from-[#1d4ed8] hover:to-[#6d28d9] text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50 shadow-sm"
           >
             {claiming ? 'Minting NFT...' : 'Claim Badge'}
           </button>
@@ -142,7 +165,7 @@ function SingleCard({
             href={`https://lora.algokit.io/testnet/transaction/${txId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1 text-xs text-[#2563EB] hover:underline font-medium mt-2"
+            className="flex items-center justify-center gap-1 text-xs text-[#2563EB] hover:underline font-semibold mt-2"
           >
             View on Lora
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
@@ -150,35 +173,39 @@ function SingleCard({
         )}
       </div>
 
-      {/* ACHIEVEMENT SHARE CARD */}
+      {/* Achievement Share Card */}
       {showShare && txId && activeAddress && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowShare(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowShare(false)}>
           <div className="mx-4 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <div id={`share-card-${milestone.level}`} className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 text-center shadow-2xl">
-              <div className="text-5xl mb-4">{milestone.icon}</div>
-              <h3 className="text-white font-bold text-xl mb-1">Achievement Unlocked!</h3>
-              <p className="text-gray-300 text-sm mb-4">I just earned <span className="text-white font-semibold">{milestone.name}</span> on AlgoVault!</p>
-              <div className="bg-white/10 rounded-lg px-4 py-3 mb-4">
-                <p className="text-gray-400 text-xs font-mono">{activeAddress.slice(0, 8)}...{activeAddress.slice(-6)}</p>
-                <p className="text-white text-lg font-bold mt-1">{savedAlgo.toFixed(2)} ALGO saved</p>
+            <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-[#1e3a5f] rounded-2xl p-7 text-center shadow-2xl border border-white/5">
+              <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${milestone.gradient} flex items-center justify-center mx-auto mb-5 ${milestone.glowClass}`}>
+                <span className="text-4xl">{milestone.icon}</span>
               </div>
-              <div className="text-gray-500 text-xs">
+              <h3 className="text-white font-bold text-2xl mb-2">Achievement Unlocked!</h3>
+              <p className="text-gray-400 text-sm mb-5">
+                I just earned <span className="text-white font-semibold">{milestone.name}</span> on AlgoVault!
+              </p>
+              <div className="bg-white/5 border border-white/10 rounded-xl px-5 py-4 mb-5">
+                <p className="text-gray-500 text-xs font-mono">{activeAddress.slice(0, 8)}...{activeAddress.slice(-6)}</p>
+                <p className="text-white text-2xl font-bold mt-1.5">{savedAlgo.toFixed(2)} <span className="text-base text-gray-400 font-normal">ALGO saved</span></p>
+              </div>
+              <div className="text-gray-600 text-xs">
                 Powered by Algorand Testnet &middot; App {import.meta.env.VITE_APP_ID}
               </div>
             </div>
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-2.5 mt-4">
               <button
                 onClick={() => {
                   const text = `I just earned the ${milestone.name} badge on AlgoVault! ${savedAlgo.toFixed(2)} ALGO saved on Algorand Testnet. #Algorand #AlgoVault #Web3`
                   navigator.clipboard.writeText(text)
                 }}
-                className="flex-1 py-2.5 bg-white text-gray-900 text-sm font-semibold rounded-lg hover:bg-gray-100"
+                className="flex-1 py-3 bg-white text-gray-900 text-sm font-semibold rounded-xl hover:bg-gray-100 transition-colors"
               >
                 Copy Share Text
               </button>
               <button
                 onClick={() => setShowShare(false)}
-                className="flex-1 py-2.5 bg-[#2563EB] text-white text-sm font-semibold rounded-lg hover:bg-[#1d4ed8]"
+                className="flex-1 py-3 bg-gradient-to-r from-[#2563EB] to-[#7c3aed] text-white text-sm font-semibold rounded-xl hover:from-[#1d4ed8] hover:to-[#6d28d9] transition-all"
               >
                 Close
               </button>

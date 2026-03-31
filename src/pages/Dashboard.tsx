@@ -98,24 +98,79 @@ export default function Dashboard() {
     }
   }
 
+  const STAT_CARDS = [
+    {
+      label: 'Your Savings',
+      value: savedAlgo.toFixed(2),
+      unit: 'ALGO',
+      sub: 'Personal vault balance',
+      gradient: 'from-blue-500 to-blue-600',
+      bgLight: 'bg-blue-50',
+      iconColor: 'text-blue-500',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+      ),
+    },
+    {
+      label: 'Global Vault',
+      value: globalAlgo.toFixed(2),
+      unit: 'ALGO',
+      sub: `${globalStats.totalUsers} total users`,
+      gradient: 'from-emerald-500 to-green-600',
+      bgLight: 'bg-emerald-50',
+      iconColor: 'text-emerald-500',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      ),
+    },
+    {
+      label: 'Your Streak',
+      value: String(userStats.streak),
+      unit: 'days',
+      sub: 'Consecutive deposits',
+      gradient: 'from-orange-400 to-orange-500',
+      bgLight: userStats.streak > 0 ? 'bg-orange-50' : 'bg-gray-50',
+      iconColor: userStats.streak > 0 ? 'text-orange-500' : 'text-gray-400',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>
+      ),
+    },
+    {
+      label: 'Milestone',
+      value: `${userStats.milestone}`,
+      unit: '/ 3',
+      sub: badgeName(userStats.milestone),
+      gradient: 'from-violet-500 to-purple-600',
+      bgLight: 'bg-violet-50',
+      iconColor: 'text-violet-500',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+      ),
+    },
+  ]
+
   return (
-    <div className="min-h-screen bg-white font-sans">
+    <div className="min-h-screen bg-[#f8f9fb] font-sans">
       {/* NAVBAR */}
-      <nav className="border-b border-gray-200 bg-white sticky top-0 z-30">
-        <div className="mx-auto max-w-6xl px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg className="w-7 h-7 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-            <span className="font-bold text-lg text-gray-900">AlgoVault</span>
+      <nav className="bg-white border-b border-gray-100 sticky top-0 z-30">
+        <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7c3aed] flex items-center justify-center">
+              <svg className="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+            </div>
+            <span className="font-bold text-lg text-gray-900 tracking-tight">AlgoVault</span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-green-500" />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Testnet
             </div>
-            <div className="text-sm font-mono text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg">{truncated}</div>
-            <div className="text-sm text-gray-900 font-medium">{balance} <span className="text-gray-500 font-normal">ALGO</span></div>
-            <button onClick={disconnect} className="text-sm text-red-500 hover:text-red-600 font-medium">Disconnect</button>
+            <div className="text-sm font-mono text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">{truncated}</div>
+            <div className="text-sm font-semibold text-gray-900">{balance} <span className="text-gray-400 font-normal">ALGO</span></div>
+            <button onClick={disconnect} className="ml-1 text-sm text-gray-400 hover:text-red-500 transition-colors font-medium">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+            </button>
           </div>
         </div>
       </nav>
@@ -123,36 +178,41 @@ export default function Dashboard() {
       <div className="mx-auto max-w-6xl px-6 py-8 space-y-8">
         {/* OPT-IN BANNER */}
         {optedIn === false && (
-          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
+          <div className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl px-6 py-5 card-shadow">
             <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span className="text-sm text-amber-800 font-medium">You need to opt into the vault before you can deposit or earn badges.</span>
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-900">Opt into the vault to get started</p>
+                <p className="text-xs text-amber-700/70 mt-0.5">This one-time transaction enables deposits, badges, and streak tracking.</p>
+              </div>
             </div>
             <button
               onClick={handleOptIn}
               disabled={optingIn}
-              className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+              className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all shadow-sm"
             >
-              {optingIn ? 'Opting in...' : 'Opt In'}
+              {optingIn ? 'Opting in...' : 'Opt In Now'}
             </button>
           </div>
         )}
 
         {/* VAULT TYPE SELECTOR */}
         <div>
-          <h2 className="text-gray-900 font-bold text-lg mb-3">Choose Vault Type</h2>
+          <h2 className="text-gray-900 font-bold text-lg mb-3 tracking-tight">Choose Vault Type</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {VAULT_TYPES.map((v) => (
               <button
                 key={v.id}
                 onClick={() => setVaultType(v.id)}
-                className={`text-left p-4 rounded-xl border-2 transition-all ${
+                className={`text-left p-4 rounded-2xl border-2 transition-all duration-200 group ${
                   vaultType === v.id
-                    ? 'border-[#2563EB] bg-blue-50/50'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                    ? 'border-[#2563EB] bg-blue-50/60 card-shadow glow-blue'
+                    : 'border-gray-100 hover:border-gray-200 bg-white hover:card-shadow'
                 }`}
               >
-                <div className="text-2xl mb-2">{v.icon}</div>
+                <div className="text-2xl mb-2 group-hover:scale-110 transition-transform inline-block">{v.icon}</div>
                 <div className="font-semibold text-sm text-gray-900">{v.name}</div>
                 <div className="text-xs text-gray-500 mt-0.5">{v.desc}</div>
               </button>
@@ -162,82 +222,49 @@ export default function Dashboard() {
 
         {/* STAT CARDS */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Your Savings */}
-          <div className="rounded-xl border border-gray-200 p-5 bg-white">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                <svg className="w-5 h-5 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+          {STAT_CARDS.map((card) => (
+            <div key={card.label} className="rounded-2xl border border-gray-100 p-5 bg-white card-shadow hover:card-shadow-hover transition-all duration-200 group">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className={`w-10 h-10 rounded-xl ${card.bgLight} flex items-center justify-center ${card.iconColor} group-hover:scale-105 transition-transform`}>
+                  {card.icon}
+                </div>
+                <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">{card.label}</span>
               </div>
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Your Savings</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{savedAlgo.toFixed(2)} <span className="text-sm font-normal text-gray-500">ALGO</span></div>
-            <div className="text-xs text-gray-500 mt-1">Personal vault balance</div>
-          </div>
-
-          {/* Global Vault */}
-          <div className="rounded-xl border border-gray-200 p-5 bg-white">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div className="text-3xl font-bold text-gray-900 tracking-tight">
+                {card.value} <span className="text-sm font-normal text-gray-400">{card.unit}</span>
               </div>
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Global Vault</span>
+              <div className="text-xs text-gray-500 mt-1.5">{card.sub}</div>
             </div>
-            <div className="text-2xl font-bold text-gray-900">{globalAlgo.toFixed(2)} <span className="text-sm font-normal text-gray-500">ALGO</span></div>
-            <div className="text-xs text-gray-500 mt-1">Total locked by all users</div>
-          </div>
-
-          {/* Your Streak */}
-          <div className="rounded-xl border border-gray-200 p-5 bg-white">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${userStats.streak > 0 ? 'bg-orange-50' : 'bg-gray-50'}`}>
-                <svg className={`w-5 h-5 ${userStats.streak > 0 ? 'text-orange-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>
-              </div>
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Your Streak</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{userStats.streak} <span className="text-sm font-normal text-gray-500">days</span></div>
-            <div className="text-xs text-gray-500 mt-1">Consecutive deposits</div>
-          </div>
-
-          {/* Milestone Level */}
-          <div className="rounded-xl border border-gray-200 p-5 bg-white">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-              </div>
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Milestone</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{userStats.milestone} <span className="text-sm font-normal text-gray-500">/ 3</span></div>
-            <div className="text-xs text-gray-500 mt-1">{badgeName(userStats.milestone)}</div>
-          </div>
+          ))}
         </div>
 
         {/* PROGRESS SECTION */}
-        <div className="rounded-xl border border-gray-200 p-6 bg-white">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900">Progress to Next Milestone</h3>
+        <div className="rounded-2xl border border-gray-100 p-6 bg-white card-shadow">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-bold text-gray-900 text-lg tracking-tight">Progress to Next Milestone</h3>
             {next && (
-              <span className="text-sm text-gray-500">
-                Next: <span className="font-medium text-gray-700">{next.name}</span> at {next.threshold} ALGO
+              <span className="text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                Next: <span className="font-semibold text-gray-700">{next.name}</span> at {next.threshold} ALGO
               </span>
             )}
           </div>
-          <div className="flex items-center gap-4 mb-2">
-            <div className="text-sm font-medium text-gray-700">{savedAlgo.toFixed(2)} ALGO</div>
+          <div className="flex items-center gap-4 mb-3">
+            <div className="text-sm font-bold text-gray-800 min-w-[60px]">{savedAlgo.toFixed(2)}</div>
             <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#2563EB] rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-[#2563EB] to-[#7c3aed] rounded-full transition-all duration-700 ease-out"
                 style={{ width: `${progressPct}%` }}
               />
             </div>
-            <div className="text-sm font-medium text-gray-700">{next?.threshold ?? 100} ALGO</div>
+            <div className="text-sm font-bold text-gray-800 min-w-[60px] text-right">{next?.threshold ?? 100} ALGO</div>
           </div>
-          <div className="text-xs text-gray-500">{progressPct.toFixed(0)}% complete</div>
+          <div className="text-xs text-gray-500 mb-5">{progressPct.toFixed(0)}% complete</div>
 
-          <div className="flex items-center gap-6 mt-5">
+          <div className="flex items-center gap-6 pt-4 border-t border-gray-50">
             {MILESTONES.map((m) => (
               <div key={m.level} className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${userStats.milestone >= m.level ? 'bg-[#2563EB]' : 'bg-gray-300'}`} />
-                <span className={`text-xs font-medium ${userStats.milestone >= m.level ? 'text-[#2563EB]' : 'text-gray-500'}`}>
+                <div className={`w-3 h-3 rounded-full transition-colors ${userStats.milestone >= m.level ? 'bg-gradient-to-br from-[#2563EB] to-[#7c3aed]' : 'bg-gray-200'}`} />
+                <span className={`text-xs font-medium ${userStats.milestone >= m.level ? 'text-[#2563EB]' : 'text-gray-400'}`}>
                   {m.threshold} ALGO &middot; {m.name}
                 </span>
               </div>
@@ -252,19 +279,19 @@ export default function Dashboard() {
           onBadgeClaimed={refreshData}
         />
 
-        {/* DEPOSIT + WITHDRAW */}
+        {/* DEPOSIT + WITHDRAW BUTTONS */}
         <div className="flex items-center gap-4">
           <button
             onClick={() => setShowDeposit(true)}
             disabled={optedIn === false}
-            className="px-8 py-3 bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-semibold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-8 py-3.5 bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] hover:from-[#1d4ed8] hover:to-[#1e40af] text-white font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm hover:shadow-md glow-blue"
           >
             Deposit ALGO
           </button>
           <button
             onClick={() => setShowWithdraw(true)}
             disabled={optedIn === false || userStats.totalSaved === 0}
-            className="text-sm text-gray-500 hover:text-gray-700 underline disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-6 py-3.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
           >
             Withdraw
           </button>
@@ -273,12 +300,12 @@ export default function Dashboard() {
         {/* TRANSACTION HISTORY */}
         {activeAddress && <TransactionHistory address={activeAddress} />}
 
-        <div className="text-xs text-gray-400 pb-4">
+        <div className="text-xs text-gray-400 pb-4 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
           Connected via {activeWallet?.metadata.name ?? 'wallet'} &middot; App {Number(import.meta.env.VITE_APP_ID)}
         </div>
       </div>
 
-      {/* DEPOSIT MODAL */}
       {showDeposit && (
         <DepositForm
           vaultType={vaultType}
@@ -287,7 +314,6 @@ export default function Dashboard() {
         />
       )}
 
-      {/* WITHDRAW MODAL */}
       {showWithdraw && (
         <WithdrawForm
           currentBalanceMicro={userStats.totalSaved}
