@@ -52,7 +52,7 @@ const byteArrayType = algosdk.ABIType.from('byte[]')
 
 // ARC-4 selectors match `savings_vault/.../artifacts/savings_vault/SavingsVault.arc56.json` (deposit pay ref, withdraw + penalty_sink, etc.).
 
-// Legacy on-chain app (757999871) is an older ARC-4 router that DOES NOT include Pact/Lock/Dream.
+// Legacy on-chain app (previous testnet deployment) is an older ARC-4 router that DOES NOT include Pact/Lock/Dream.
 // It also uses a different withdraw signature (`withdraw(uint64)void`).
 const SELECTOR_WITHDRAW_LEGACY = Uint8Array.from([0x21, 0xf1, 0xdd, 0xff])
 

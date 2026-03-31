@@ -3,7 +3,7 @@
 Date: 2026-03-31
 Delivery mode: LocalNet-first, then Testnet handoff
 Primary frontend network: Algorand Testnet (AlgoNode)
-Current frontend App ID: 757999871
+Current frontend App ID: 758024719
 
 ## Automated Checks Completed
 
@@ -93,4 +93,4 @@ Use this exact order for demo:
 ## Known Blockers
 
 - Testnet redeploy from this machine is blocked until `DEPLOYER_MNEMONIC` is corrected.
-- Current testnet app `757999871` predates Pack A ABI; new Pack A runtime requires deploying the upgraded contract and pointing frontend to the new app ID.
+- Full Pack SavingsVault is deployed on testnet at App ID `758024719` (Pact / Lock / Dream supported).
