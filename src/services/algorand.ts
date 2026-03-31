@@ -83,18 +83,36 @@ async function detectContractMode(): Promise<VaultContractMode> {
   if (cachedMode) return cachedMode
   const algod = getAlgodClient()
   const app = (await algod.getApplicationByID(APP_ID).do()) as any
+  // Preferred detection (no disassembly): full-pack contracts publish pact_* keys in global state.
+  // This avoids relying on algod.disassemble(), which can be blocked/unavailable in some hosted environments.
+  try {
+    const g = app?.params?.['global-state'] ?? []
+    const hasKey = (k: string) => g.some((x: any) => x?.key === btoa(k))
+    if (hasKey('pact_enabled') || hasKey('pact_required_amount') || hasKey('pact_cadence_seconds')) {
+      cachedMode = 'full_pack'
+      return cachedMode
+    }
+  } catch {
+    // fall through to disassembly heuristic
+  }
+
   const approvalB64 = app?.params?.['approval-program']
   if (typeof approvalB64 !== 'string' || approvalB64.length === 0) {
     cachedMode = 'legacy_minimal'
     return cachedMode
   }
   const program = base64ToBytes(approvalB64)
-  const dis = (await algod.disassemble(program).do()) as any
-  const teal = String(dis?.result ?? '')
-  const hasFullWithdraw = teal.includes(`0x${selectorHex(SELECTOR_WITHDRAW)}`)
-  const hasLegacyWithdraw = teal.includes(`0x${selectorHex(SELECTOR_WITHDRAW_LEGACY)}`)
-  // Heuristic: full pack includes withdraw(uint64,address) + extra methods; legacy includes withdraw(uint64).
-  cachedMode = hasFullWithdraw ? 'full_pack' : hasLegacyWithdraw ? 'legacy_minimal' : 'legacy_minimal'
+  try {
+    const dis = (await algod.disassemble(program).do()) as any
+    const teal = String(dis?.result ?? '')
+    const hasFullWithdraw = teal.includes(`0x${selectorHex(SELECTOR_WITHDRAW)}`)
+    const hasLegacyWithdraw = teal.includes(`0x${selectorHex(SELECTOR_WITHDRAW_LEGACY)}`)
+    // Heuristic: full pack includes withdraw(uint64,address) + extra methods; legacy includes withdraw(uint64).
+    cachedMode = hasFullWithdraw ? 'full_pack' : hasLegacyWithdraw ? 'legacy_minimal' : 'legacy_minimal'
+  } catch {
+    // If disassembly fails, default to legacy unless global-state heuristic proved full_pack above.
+    cachedMode = 'legacy_minimal'
+  }
   return cachedMode
 }
 
