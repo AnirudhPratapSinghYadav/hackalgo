@@ -14,13 +14,6 @@ import TransactionHistory from '../components/TransactionHistory'
 import MilestoneCards from '../components/MilestoneCard'
 import SavingsCoach from '../components/SavingsCoach'
 
-const VAULT_TYPES = [
-  { id: 'personal', icon: '\u{1F3E6}', name: 'Personal Savings', desc: 'Long-term wealth building', accent: 'from-blue-500 to-indigo-600', border: 'border-blue-400', bg: 'bg-blue-50', tag: 'Steady Growth' },
-  { id: 'harvest', icon: '\u{1F33E}', name: 'Harvest Vault', desc: 'Seasonal income protection', accent: 'from-amber-500 to-yellow-500', border: 'border-amber-400', bg: 'bg-amber-50', tag: 'Seasonal' },
-  { id: 'emergency', icon: '\u{1F6A8}', name: 'Emergency Fund', desc: 'Crisis-proof blockchain reserve', accent: 'from-red-500 to-rose-500', border: 'border-red-400', bg: 'bg-red-50', tag: 'Safety Net' },
-  { id: 'remittance', icon: '\u{1F4B8}', name: 'Remittance Vault', desc: 'Cross-border transfer buffer', accent: 'from-emerald-500 to-teal-500', border: 'border-emerald-400', bg: 'bg-emerald-50', tag: 'Global' },
-] as const
-
 const MILESTONES = [
   { level: 1, name: 'Vault Starter', threshold: 10 },
   { level: 2, name: 'Vault Builder', threshold: 50 },
@@ -47,7 +40,6 @@ export default function Dashboard() {
   const [globalStats, setGlobalStats] = useState({ totalDeposited: 0, totalUsers: 0 })
   const [optedIn, setOptedIn] = useState<boolean | null>(null)
   const [optingIn, setOptingIn] = useState(false)
-  const [vaultType, setVaultType] = useState('personal')
   const [showDeposit, setShowDeposit] = useState(false)
   const [showWithdraw, setShowWithdraw] = useState(false)
 
@@ -207,35 +199,6 @@ export default function Dashboard() {
             </button>
           </div>
         )}
-
-        {/* VAULT TYPE SELECTOR */}
-        <div>
-          <h2 className="text-gray-900 font-bold text-lg mb-3 tracking-tight">Vault Strategy</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {VAULT_TYPES.map((v) => {
-              const selected = vaultType === v.id
-              return (
-                <button
-                  key={v.id}
-                  onClick={() => setVaultType(v.id)}
-                  className={`relative text-left p-5 rounded-2xl border-2 transition-all duration-300 group overflow-hidden ${
-                    selected ? `${v.border} card-shadow` : 'border-gray-100 hover:border-gray-200 bg-white hover:card-shadow'
-                  }`}
-                >
-                  {selected && <div className={`absolute inset-0 bg-gradient-to-br ${v.accent} opacity-[0.07]`} />}
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-2xl group-hover:scale-110 transition-transform inline-block">{v.icon}</span>
-                      {selected && <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-gradient-to-r ${v.accent} text-white`}>{v.tag}</span>}
-                    </div>
-                    <div className="font-bold text-sm text-gray-900">{v.name}</div>
-                    <div className="text-xs text-gray-500 mt-1 leading-relaxed">{v.desc}</div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
 
         {/* SMART MODULES */}
         <div>
@@ -424,7 +387,6 @@ export default function Dashboard() {
 
       {showDeposit && (
         <DepositForm
-          vaultType={vaultType}
           currentSavedAlgo={savedAlgo}
           onClose={() => setShowDeposit(false)}
           onSuccess={() => { setShowDeposit(false); refreshData() }}
@@ -444,7 +406,6 @@ export default function Dashboard() {
         totalSaved={savedAlgo}
         streak={userStats.streak}
         milestone={userStats.milestone}
-        vaultType={vaultType}
         onOpenDeposit={() => setShowDeposit(true)}
       />
     </div>

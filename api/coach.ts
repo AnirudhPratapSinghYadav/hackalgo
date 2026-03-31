@@ -3,32 +3,19 @@ type CoachPayload = {
   streak: number
   milestone: number
   recentDeposits: string
-  vaultType: string
+  vaultType?: string
 }
 
 function buildPrompt(data: CoachPayload): string {
-  let base = `You are a friendly financial coach for an Algorand blockchain savings app called AlgoVault.
+  return `You are a friendly AI savings coach for AlgoVault, a blockchain savings app on Algorand.
 
 User data:
 - Total saved: ${data.totalSaved} ALGO
 - Current streak: ${data.streak} days
 - Milestone level: ${data.milestone}/3
 - Last 3 deposits: ${data.recentDeposits}
-- Vault type: ${data.vaultType}
 
-Give 2-3 sentences of personalized encouraging advice based on THEIR SPECIFIC DATA.
-Mention their actual numbers. Reference Algorand blockchain.
-Be warm and motivating. Max 60 words.`
-
-  if (data.vaultType === 'emergency') {
-    base += `\n\nThis is an Emergency/Disaster Fund. Give advice about emergency preparedness and why blockchain savings are reliable during crises like floods or infrastructure failures.`
-  } else if (data.vaultType === 'harvest') {
-    base += `\n\nThis is a Harvest Vault for seasonal earners. Give advice about managing seasonal income and building savings between harvest seasons.`
-  } else if (data.vaultType === 'remittance') {
-    base += `\n\nThis is a Remittance Vault for cross-border transfers. Give advice about building reserves for efficient international transfers on Algorand's fast, low-cost network.`
-  }
-
-  return base
+Give ONE specific, motivating piece of advice in 2-3 sentences max. Mention their actual numbers. Reference Algorand blockchain benefits (speed, transparency, immutability). Be warm. Max 60 words.`
 }
 
 export default async function handler(req: any, res: any) {

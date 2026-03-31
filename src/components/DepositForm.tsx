@@ -6,15 +6,7 @@ import { depositToVault, getExplorerTransactionUrl } from '../services/algorand'
 interface Props {
   onClose: () => void
   onSuccess: (milestoneReached?: boolean) => void
-  vaultType: string
   currentSavedAlgo: number
-}
-
-const VAULT_MESSAGES: Record<string, string> = {
-  personal: 'Growing your personal savings on-chain',
-  harvest: 'Stashing your seasonal earnings safely',
-  emergency: 'Building your disaster-ready reserve',
-  remittance: 'Securing funds for cross-border transfers',
 }
 
 const APP_ADDRESS = import.meta.env.VITE_APP_ADDRESS ?? ''
@@ -23,7 +15,7 @@ function truncateAddr(addr: string) {
   return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '\u2014'
 }
 
-export default function DepositForm({ onClose, onSuccess, vaultType, currentSavedAlgo }: Props) {
+export default function DepositForm({ onClose, onSuccess, currentSavedAlgo }: Props) {
   const { activeAddress, signTransactions } = useWallet()
 
   const [amount, setAmount] = useState('')
@@ -110,7 +102,7 @@ export default function DepositForm({ onClose, onSuccess, vaultType, currentSave
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
-              <p className="text-sm text-gray-500 ml-[46px]">{VAULT_MESSAGES[vaultType] ?? VAULT_MESSAGES.personal}</p>
+              <p className="text-sm text-gray-500 ml-[46px]">Growing your savings on Algorand blockchain</p>
             </div>
 
             <div className="px-6 pb-6">

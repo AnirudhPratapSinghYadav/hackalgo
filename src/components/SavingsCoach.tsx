@@ -7,11 +7,10 @@ interface Props {
   totalSaved: number
   streak: number
   milestone: number
-  vaultType: string
   onOpenDeposit: () => void
 }
 
-export default function SavingsCoach({ address, totalSaved, streak, milestone, vaultType, onOpenDeposit }: Props) {
+export default function SavingsCoach({ address, totalSaved, streak, milestone, onOpenDeposit }: Props) {
   const [advice, setAdvice] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -27,7 +26,7 @@ export default function SavingsCoach({ address, totalSaved, streak, milestone, v
         streak,
         milestone,
         recentDeposits,
-        vaultType,
+        vaultType: 'personal',
       })
       setAdvice(text)
     } catch {
@@ -35,7 +34,7 @@ export default function SavingsCoach({ address, totalSaved, streak, milestone, v
     } finally {
       setLoading(false)
     }
-  }, [address, totalSaved, streak, milestone, vaultType])
+  }, [address, totalSaved, streak, milestone])
 
   useEffect(() => {
     if (open) fetchAdvice()
