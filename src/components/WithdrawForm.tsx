@@ -26,8 +26,12 @@ export default function WithdrawForm({ onClose, onSuccess, currentBalanceMicro }
     setStatus('signing')
     setError(null)
     try {
-      setStatus('confirming')
-      const id = await withdrawFromVault(signTransactions, activeAddress, numAmount)
+      const wrappedSign: typeof signTransactions = async (txns) => {
+        const result = await signTransactions(txns)
+        setStatus('confirming')
+        return result
+      }
+      const id = await withdrawFromVault(wrappedSign, activeAddress, numAmount)
       setTxId(id)
       setStatus('done')
     } catch (e: any) {

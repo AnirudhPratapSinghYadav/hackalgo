@@ -27,6 +27,16 @@ body {
   50% { box-shadow: 0 0 24px rgba(234,179,8,0.45); }
 }
 
+@keyframes avatar-bounce {
+  0%, 100% { transform: translateY(-50%) translateX(-50%) translateY(0); }
+  50% { transform: translateY(-50%) translateX(-50%) translateY(-6px); }
+}
+
+@keyframes reveal-up {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 @layer utilities {
   .glass {
     background: rgba(255, 255, 255, 0.08);
@@ -53,5 +63,29 @@ body {
     background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
+  }
+  .avatar-bounce {
+    animation: avatar-bounce 2s ease-in-out infinite;
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 700ms ease, transform 700ms ease;
+  }
+
+  .reveal-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .tilt-hover {
+    transform: perspective(900px) rotateX(0deg) rotateY(0deg);
+    transition: transform 300ms ease, box-shadow 300ms ease;
+    will-change: transform;
+  }
+
+  .tilt-hover:hover {
+    transform: perspective(900px) rotateX(2deg) rotateY(-3deg) translateY(-2px);
   }
 }

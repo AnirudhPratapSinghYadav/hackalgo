@@ -17,7 +17,7 @@ export interface UserContext {
 }
 
 function buildSystemPrompt(ctx: UserContext): string {
-  return `You are AlgoVault AI — a friendly, knowledgeable financial advisor for a blockchain savings app built on Algorand.
+  return `You are AlgoVault AI — a friendly, knowledgeable advisor for a blockchain savings and community protection platform built on Algorand.
 
 REAL USER DATA (from Algorand blockchain, not hardcoded):
 - Wallet savings: ${ctx.totalSaved.toFixed(2)} ALGO
@@ -26,12 +26,18 @@ REAL USER DATA (from Algorand blockchain, not hardcoded):
 - Temptation Lock: ${ctx.lockEnabled ? `ACTIVE — goal ${ctx.goalAmount.toFixed(0)} ALGO, ${ctx.penaltyPct}% early withdrawal penalty` : 'Not set'}
 - Recent deposits: ${ctx.recentDeposits || 'none yet'}
 
+PLATFORM CONTEXT:
+AlgoVault is not just a savings app — it is a promise-and-protection platform with three real-world use cases:
+1. Education Guardian Vault — multiple contributors save for a child's education. Beneficiary receives funds when conditions are met.
+2. Community Disaster Reserve — villagers pool savings into a transparent emergency fund for floods, cyclones, or crises.
+3. Savings Pact & Protection — partner accountability with self-imposed penalties, temptation locks, and visual goal tracking.
+Every deposit is an atomic grouped transaction (payment + app call). Badges are real ASA NFTs minted by the smart contract via inner transactions.
+
 YOUR PERSONALITY:
 - Warm, encouraging, and specific — always reference the user's actual numbers
 - You understand Algorand blockchain: ~3.3s finality, <0.001 ALGO fees, ARC-4 ABI, ASA tokens, atomic transactions
-- You can explain how the smart contract works (opt-in, grouped deposit, badge minting via inner transactions, penalty enforcement)
+- You can explain how guardian vaults, disaster reserves, and pacts work
 - You give actionable savings advice grounded in behavioral economics
-- You can answer questions about crypto savings, DeFi basics, and Algorand
 - Keep responses concise (2-4 sentences) unless the user asks for detail
 - You can respond in Hindi, Telugu, or English — match the user's language
 
@@ -98,6 +104,12 @@ function getSmartFallback(message: string, ctx: UserContext): string {
     return lockEnabled
       ? `Your Temptation Lock is active with a ${goalAmount.toFixed(0)} ALGO goal and ${penaltyPct}% penalty. If you withdraw before reaching the goal, the smart contract automatically deducts ${penaltyPct}% and sends it to your penalty sink address. You can't bypass it — it's enforced in the contract's withdraw method.`
       : 'You don\'t have a Temptation Lock set. Go to the Temptation Lock module to set a savings goal and self-imposed penalty — the contract will enforce it automatically on early withdrawal.'
+
+  if (msg.includes('guardian') || msg.includes('education') || msg.includes('beneficiary'))
+    return 'The Guardian Vault lets multiple people save together for one beneficiary — like a child\'s education fund. Contributions are tracked on Algorand with full transparency. When the goal is reached, the beneficiary can claim the funds.'
+
+  if (msg.includes('community') || msg.includes('disaster') || msg.includes('reserve') || msg.includes('village') || msg.includes('emergency'))
+    return 'The Community Disaster Reserve pools savings from multiple villagers into a transparent emergency fund on Algorand. The reserve health is tracked live — when disaster strikes, the fund is ready for release.'
 
   if (msg.includes('algorand') || msg.includes('blockchain') || msg.includes('how'))
     return 'AlgoVault runs on Algorand — a pure proof-of-stake blockchain with ~3.3 second finality and fees under 0.001 ALGO. Every deposit, withdrawal, badge mint, and penalty is an on-chain transaction you can verify on Lora Explorer.'

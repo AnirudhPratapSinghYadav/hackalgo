@@ -63,6 +63,13 @@ function encodeByteArrayArg(text: string): Uint8Array {
   return byteArrayType.encode(new TextEncoder().encode(text))
 }
 
+function encodeTxnRefArg(txnIndex: number): Uint8Array {
+  if (!Number.isInteger(txnIndex) || txnIndex < 0 || txnIndex > 255) {
+    throw new Error('Invalid transaction reference index')
+  }
+  return Uint8Array.from([txnIndex])
+}
+
 function getIndexerPort(): number {
   const configured = Number(import.meta.env.VITE_INDEXER_PORT || 443)
   return Number.isFinite(configured) ? configured : 443
@@ -176,7 +183,8 @@ export async function depositToVault(signTransactions: SignTransactionsFn, addre
   const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
-    appArgs: [SELECTOR_DEPOSIT],
+    // ARC-4 txn arg: reference the payment txn by index (0)
+    appArgs: [SELECTOR_DEPOSIT, encodeTxnRefArg(0)],
     suggestedParams: sp,
   })
 
@@ -259,10 +267,34 @@ export async function getGlobalStats(): Promise<{
   }
 }
 
-// Claim badge NFT
-export async function claimBadge(signTransactions: SignTransactionsFn, address: string, level: number): Promise<string> {
+const BADGE_NAMES: Record<number, string> = {
+  1: 'Vault Starter',
+  2: 'Vault Builder',
+  3: 'Vault Master',
+}
+
+function buildArc69Note(address: string, level: number): Uint8Array {
+  const walletSeed = address.slice(0, 8)
+  const metadata = {
+    standard: 'arc69',
+    description: `${BADGE_NAMES[level] ?? 'Badge'} — AlgoVault milestone achievement`,
+    properties: {
+      wallet: address,
+      wallet_seed: walletSeed,
+      milestone: level,
+      vault_type: 'savings',
+      earned_date: new Date().toISOString(),
+      app_id: APP_ID,
+      network: NETWORK,
+    },
+  }
+  return new TextEncoder().encode(JSON.stringify(metadata))
+}
+
+export async function claimBadge(signTransactions: SignTransactionsFn, address: string, level: number): Promise<{ txId: string; assetId?: number }> {
   if (![1, 2, 3].includes(level)) throw new Error('Milestone level must be 1, 2, or 3')
   const sp = await getSuggestedParams()
+  const arc69Note = buildArc69Note(address, level)
   const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
@@ -270,6 +302,7 @@ export async function claimBadge(signTransactions: SignTransactionsFn, address: 
       SELECTOR_CLAIM_BADGE,
       algosdk.encodeUint64(level),
     ],
+    note: arc69Note,
     suggestedParams: sp,
   })
   const signed = await signTransactions([appCallTxn.toByte()])
@@ -277,7 +310,17 @@ export async function claimBadge(signTransactions: SignTransactionsFn, address: 
   const algod = getAlgodClient()
   const { txId } = await algod.sendRawTransaction(validSigned[0]).do()
   await algosdk.waitForConfirmation(algod, txId, 8)
-  return txId
+
+  try {
+    const p = (await algod.pendingTransactionInformation(txId).do()) as any
+    const inner = (p?.['inner-txns'] ?? []) as any[]
+    const created = inner
+      .map((t) => t?.['created-asset-index'])
+      .find((x) => typeof x === 'number' && x > 0) as number | undefined
+    return { txId, assetId: created }
+  } catch {
+    return { txId }
+  }
 }
 
 export async function setupSavingsPact(
@@ -329,7 +372,8 @@ export async function applyPactPenalty(
   const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
-    appArgs: [SELECTOR_APPLY_PACT_PENALTY, encodeAddressArg(partnerAddress)],
+    // ARC-4 txn arg: reference the payment txn by index (0)
+    appArgs: [SELECTOR_APPLY_PACT_PENALTY, encodeAddressArg(partnerAddress), encodeTxnRefArg(0)],
     suggestedParams: sp,
   })
   return signAndSendGroup(signTransactions, [payTxn, appCallTxn])
@@ -550,4 +594,24 @@ export async function isOptedIn(address: string): Promise<boolean> {
   const info = (await algod.accountInformation(address).do()) as any
   const local = info?.['apps-local-state'] ?? []
   return local.some((a: any) => a.id === APP_ID)
+}
+
+export async function getLatestOptInTxId(address: string): Promise<string | null> {
+  const indexer = getIndexerClient()
+  const res = (await indexer
+    .searchForTransactions()
+    .address(address)
+    .txType('appl')
+    .applicationID(APP_ID)
+    .limit(25)
+    .do()) as any
+
+  const txns = (res?.transactions ?? []) as any[]
+  const optIn = txns
+    .filter((t) => t?.['tx-type'] === 'appl')
+    .filter((t) => t?.['application-transaction']?.['application-id'] === APP_ID)
+    .filter((t) => String(t?.['application-transaction']?.['on-completion'] ?? '').toLowerCase() === 'optin')
+    .sort((a, b) => (b?.['round-time'] ?? 0) - (a?.['round-time'] ?? 0))[0]
+
+  return optIn?.id ? String(optIn.id) : null
 }

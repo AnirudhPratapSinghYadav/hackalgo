@@ -12,6 +12,7 @@ import DepositForm from '../components/DepositForm'
 import WithdrawForm from '../components/WithdrawForm'
 import TransactionHistory from '../components/TransactionHistory'
 import MilestoneCards from '../components/MilestoneCard'
+import ProgressJourney from '../components/ProgressJourney'
 import AIChatbot from '../components/AIChatbot'
 
 const MILESTONES = [
@@ -22,13 +23,6 @@ const MILESTONES = [
 
 function badgeName(level: number) {
   return MILESTONES.find((m) => m.level === level)?.name ?? 'None'
-}
-
-function nextMilestone(currentAlgo: number) {
-  for (const m of MILESTONES) {
-    if (currentAlgo < m.threshold) return m
-  }
-  return null
 }
 
 export default function Dashboard() {
@@ -73,11 +67,6 @@ export default function Dashboard() {
 
   const savedAlgo = userStats.totalSaved / 1_000_000
   const globalAlgo = globalStats.totalDeposited / 1_000_000
-  const next = nextMilestone(savedAlgo)
-  const prevThreshold = next ? (MILESTONES.find((m) => m.level === next.level - 1)?.threshold ?? 0) : 100
-  const progressPct = next
-    ? Math.min(100, ((savedAlgo - prevThreshold) / (next.threshold - prevThreshold)) * 100)
-    : 100
   const questSteps = [
     { label: 'Connect wallet', done: !!activeAddress },
     { label: 'Opt in to vault', done: optedIn === true },
@@ -117,7 +106,7 @@ export default function Dashboard() {
       label: 'Global Vault',
       value: globalAlgo.toFixed(2),
       unit: 'ALGO',
-      sub: `${globalStats.totalUsers} total users`,
+      sub: `${globalStats.totalUsers} total contributors`,
       gradient: 'from-emerald-500 to-green-600',
       bgLight: 'bg-emerald-50',
       iconColor: 'text-emerald-500',
@@ -151,36 +140,78 @@ export default function Dashboard() {
     },
   ]
 
+  const VAULT_TYPES = [
+    {
+      title: 'Education Guardian Vault',
+      desc: 'Fund a child\'s education. Multiple contributors, one beneficiary, transparent progress.',
+      accent: 'from-blue-500 to-violet-600',
+      border: 'border-blue-200/60 hover:border-blue-300',
+      shadow: 'hover:shadow-blue-500/10',
+      tag: 'Guardian',
+      tagColor: 'text-blue-700 bg-blue-50 border-blue-100',
+      link: '/vault/guardian',
+      icon: (
+        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+      ),
+    },
+    {
+      title: 'Community Disaster Reserve',
+      desc: 'Village emergency fund. Transparent reserve health, community contributions, disaster readiness.',
+      accent: 'from-emerald-500 to-teal-600',
+      border: 'border-emerald-200/60 hover:border-emerald-300',
+      shadow: 'hover:shadow-emerald-500/10',
+      tag: 'Community',
+      tagColor: 'text-emerald-700 bg-emerald-50 border-emerald-100',
+      link: '/vault/community',
+      icon: (
+        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      ),
+    },
+    {
+      title: 'Savings Pact & Protection',
+      desc: 'Lock accountability with a partner. Self-imposed penalties, temptation locks, and dream visualization.',
+      accent: 'from-amber-500 to-orange-600',
+      border: 'border-amber-200/60 hover:border-amber-300',
+      shadow: 'hover:shadow-amber-500/10',
+      tag: 'Accountability',
+      tagColor: 'text-amber-700 bg-amber-50 border-amber-100',
+      link: '/pact',
+      icon: (
+        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+      ),
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-[#f8f9fb] font-sans">
       {/* NAVBAR */}
       <nav className="bg-white border-b border-gray-100 sticky top-0 z-30">
-        <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
+        <div className="mx-auto max-w-6xl px-5 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7c3aed] flex items-center justify-center">
-              <svg className="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
             </div>
             <span className="font-bold text-lg text-gray-900 tracking-tight">AlgoVault</span>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Testnet
             </div>
             <div className="text-sm font-mono text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">{truncated}</div>
-            <div className="text-sm font-semibold text-gray-900">{balance} <span className="text-gray-400 font-normal">ALGO</span></div>
-            <button onClick={disconnect} className="ml-1 text-sm text-gray-400 hover:text-red-500 transition-colors font-medium">
+            <div className="text-sm font-semibold text-gray-900 hidden sm:block">{balance} <span className="text-gray-400 font-normal">ALGO</span></div>
+            <button onClick={disconnect} className="ml-1 text-gray-400 hover:text-red-500 transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             </button>
           </div>
         </div>
       </nav>
 
-      <div className="mx-auto max-w-6xl px-6 py-8 pb-28 space-y-8">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6 py-8 pb-28 space-y-8">
         {/* OPT-IN BANNER */}
         {optedIn === false && (
-          <div className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl px-6 py-5 card-shadow">
+          <div className="flex flex-col sm:flex-row items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl px-6 py-5 gap-4 card-shadow">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -193,19 +224,19 @@ export default function Dashboard() {
             <button
               onClick={handleOptIn}
               disabled={optingIn}
-              className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all shadow-sm"
+              className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all shadow-sm whitespace-nowrap"
             >
               {optingIn ? 'Opting in...' : 'Opt In Now'}
             </button>
           </div>
         )}
 
-        {/* SMART MODULES */}
+        {/* VAULT TYPES — Primary navigation */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-gray-900 font-bold text-lg tracking-tight">Smart Vault Modules</h2>
-              <p className="text-xs text-gray-500 mt-0.5">On-chain behavioral tools enforced by Algorand smart contracts</p>
+              <h2 className="text-gray-900 font-bold text-lg tracking-tight">Choose Your Vault</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Real-world savings solutions powered by Algorand smart contracts</p>
             </div>
             <span className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -213,62 +244,27 @@ export default function Dashboard() {
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* SAVINGS PACT */}
-            <button onClick={() => navigate('/pact')} className="group relative text-left rounded-2xl overflow-hidden border border-violet-200/60 hover:border-violet-300 transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/10 hover:-translate-y-0.5">
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-indigo-700 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" />
-              <div className="relative p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            {VAULT_TYPES.map((vt) => (
+              <button
+                key={vt.title}
+                onClick={() => navigate(vt.link)}
+                className={`group relative text-left rounded-2xl overflow-hidden border ${vt.border} transition-all duration-300 hover:shadow-lg ${vt.shadow} hover:-translate-y-0.5 bg-white`}
+              >
+                <div className="relative p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${vt.accent} flex items-center justify-center shadow-lg`}>
+                      {vt.icon}
+                    </div>
+                    <svg className="w-5 h-5 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                   </div>
-                  <svg className="w-5 h-5 text-violet-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  <h3 className="font-bold text-gray-900 text-base mb-1.5">{vt.title}</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed mb-3">{vt.desc}</p>
+                  <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${vt.tagColor}`}>
+                    {vt.tag}
+                  </span>
                 </div>
-                <h3 className="font-bold text-gray-900 text-base mb-1.5">Savings Pact</h3>
-                <p className="text-xs text-gray-500 leading-relaxed mb-3">Two wallets commit to saving together. Miss a deposit and the smart contract auto-penalizes you into your partner's vault.</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full border border-violet-100">Social Accountability</span>
-                  <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">2-Person</span>
-                </div>
-              </div>
-            </button>
-
-            {/* TEMPTATION LOCK */}
-            <button onClick={() => navigate('/temptation-lock')} className="group relative text-left rounded-2xl overflow-hidden border border-red-200/60 hover:border-red-300 transition-all duration-300 hover:shadow-lg hover:shadow-red-500/10 hover:-translate-y-0.5">
-              <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-orange-500 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" />
-              <div className="relative p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-lg shadow-red-500/20">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                  </div>
-                  <svg className="w-5 h-5 text-red-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </div>
-                <h3 className="font-bold text-gray-900 text-base mb-1.5">Temptation Lock</h3>
-                <p className="text-xs text-gray-500 leading-relaxed mb-3">Set your goal and design your own punishment. Withdraw early and the penalty automatically goes to charity, burn, or a friend.</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">Behavioral Economics</span>
-                  <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">Self-Enforced</span>
-                </div>
-              </div>
-            </button>
-
-            {/* DREAM BOARD */}
-            <button onClick={() => navigate('/dream-board')} className="group relative text-left rounded-2xl overflow-hidden border border-cyan-200/60 hover:border-cyan-300 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 hover:-translate-y-0.5">
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-600 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" />
-              <div className="relative p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  </div>
-                  <svg className="w-5 h-5 text-cyan-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </div>
-                <h3 className="font-bold text-gray-900 text-base mb-1.5">Dream Board</h3>
-                <p className="text-xs text-gray-500 leading-relaxed mb-3">Upload your dream goal image. It starts fully blurred and becomes crystal clear as your savings grow. Stored on Algorand forever.</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-100">Goal Visualization</span>
-                  <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">On-Chain</span>
-                </div>
-              </div>
-            </button>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -290,6 +286,14 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* PROGRESS JOURNEY ENGINE */}
+        <ProgressJourney
+          savedAlgo={savedAlgo}
+          currentMilestone={userStats.milestone}
+          variant="personal"
+        />
+
+        {/* SAVINGS QUEST */}
         <div className="rounded-2xl border border-gray-100 p-5 bg-white card-shadow">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-900 text-base">Your Savings Journey</h3>
@@ -311,43 +315,6 @@ export default function Dashboard() {
                 </div>
               )
             })}
-          </div>
-        </div>
-
-        {/* PROGRESS SECTION */}
-        <div className="rounded-2xl border border-gray-100 p-6 bg-white card-shadow">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="font-bold text-gray-900 text-lg tracking-tight">Milestone Progress</h3>
-            {next && (
-              <span className="text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                Next: <span className="font-semibold text-gray-700">{next.name}</span> at {next.threshold} ALGO
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4 mb-3">
-            <div className="text-sm font-bold text-gray-800 min-w-[60px]">{savedAlgo.toFixed(2)}</div>
-            <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden relative">
-              <div
-                className="h-full bg-gradient-to-r from-[#2563EB] to-[#7c3aed] rounded-full transition-all duration-700 ease-out relative"
-                style={{ width: `${progressPct}%` }}
-              >
-                <div className="absolute inset-0 progress-shimmer rounded-full" />
-                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow-sm">{progressPct > 8 ? `${progressPct.toFixed(0)}%` : ''}</span>
-              </div>
-            </div>
-            <div className="text-sm font-bold text-gray-800 min-w-[60px] text-right">{next?.threshold ?? 100} ALGO</div>
-          </div>
-          <div className="text-xs text-gray-500 mb-5">{progressPct.toFixed(0)}% complete</div>
-
-          <div className="flex items-center gap-6 pt-4 border-t border-gray-50">
-            {MILESTONES.map((m) => (
-              <div key={m.level} className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full transition-colors ${userStats.milestone >= m.level ? 'bg-gradient-to-br from-[#2563EB] to-[#7c3aed]' : 'bg-gray-200'}`} />
-                <span className={`text-xs font-medium ${userStats.milestone >= m.level ? 'text-[#2563EB]' : 'text-gray-400'}`}>
-                  {m.threshold} ALGO &middot; {m.name}
-                </span>
-              </div>
-            ))}
           </div>
         </div>
 
@@ -375,6 +342,58 @@ export default function Dashboard() {
             Withdraw
           </button>
         </div>
+
+        {/* BEHAVIORAL TOOLS — Secondary navigation */}
+        <div>
+          <h2 className="text-gray-900 font-bold text-base mb-3 tracking-tight">Behavioral Tools</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button onClick={() => navigate('/pact')} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 hover:border-violet-200 hover:shadow-sm transition-all text-left group">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Savings Pact</p>
+                <p className="text-xs text-gray-500">Partner accountability</p>
+              </div>
+              <svg className="w-4 h-4 text-gray-300 ml-auto group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </button>
+            <button onClick={() => navigate('/temptation-lock')} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 hover:border-red-200 hover:shadow-sm transition-all text-left group">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Temptation Lock</p>
+                <p className="text-xs text-gray-500">Self-imposed penalties</p>
+              </div>
+              <svg className="w-4 h-4 text-gray-300 ml-auto group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </button>
+            <button onClick={() => navigate('/dream-board')} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 hover:border-cyan-200 hover:shadow-sm transition-all text-left group">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Dream Board</p>
+                <p className="text-xs text-gray-500">Visual goal progress</p>
+              </div>
+              <svg className="w-4 h-4 text-gray-300 ml-auto group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </button>
+          </div>
+        </div>
+
+        {/* SAVINGS REPORT LINK */}
+        <button
+          onClick={() => navigate('/report')}
+          className="w-full rounded-2xl border border-gray-100 bg-white p-5 card-shadow hover:card-shadow-hover transition-all flex items-center gap-4 text-left group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#111827] to-[#1e3a5f] flex items-center justify-center flex-shrink-0">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-base font-bold text-gray-900">Live Savings Report</p>
+            <p className="text-xs text-gray-500 mt-0.5">Charts, analytics, downloadable PDF, and WhatsApp share — all from live chain data</p>
+          </div>
+          <svg className="w-5 h-5 text-gray-300 group-hover:text-[#2563EB] group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+        </button>
 
         {/* TRANSACTION HISTORY */}
         {activeAddress && <TransactionHistory address={activeAddress} />}

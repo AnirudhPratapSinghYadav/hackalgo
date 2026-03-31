@@ -35,8 +35,12 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo }: Pr
     setStatus('signing')
     setError(null)
     try {
-      setStatus('confirming')
-      const id = await depositToVault(signTransactions, activeAddress, numAmount)
+      const wrappedSign: typeof signTransactions = async (txns) => {
+        const result = await signTransactions(txns)
+        setStatus('confirming')
+        return result
+      }
+      const id = await depositToVault(wrappedSign, activeAddress, numAmount)
       setTxId(id)
       setStatus('done')
       confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } })
