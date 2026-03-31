@@ -1,6 +1,4 @@
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY ?? ''
-
-interface CoachInput {
+export interface CoachInput {
   totalSaved: number
   streak: number
   milestone: number
@@ -8,7 +6,7 @@ interface CoachInput {
   vaultType: string
 }
 
-function buildPrompt(data: CoachInput): string {
+export function buildCoachPrompt(data: CoachInput): string {
   let base = `You are a friendly financial coach for an Algorand blockchain savings app called AlgoVault.
 
 User data:
@@ -32,24 +30,13 @@ Give 2-3 sentences of personalized encouraging advice based on THEIR SPECIFIC DA
 }
 
 export async function getCoachAdvice(data: CoachInput): Promise<string> {
-  if (!API_KEY || API_KEY === 'your_key_here') {
-    return getFallbackAdvice(data)
-  }
-
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/api/coach', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
       },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 150,
-        messages: [{ role: 'user', content: buildPrompt(data) }],
-      }),
+      body: JSON.stringify(data),
     })
 
     if (!response.ok) {
@@ -57,7 +44,7 @@ export async function getCoachAdvice(data: CoachInput): Promise<string> {
     }
 
     const json = await response.json()
-    const text = json?.content?.[0]?.text
+    const text = json?.advice
     if (typeof text === 'string' && text.length > 0) return text
     throw new Error('Empty response')
   } catch {

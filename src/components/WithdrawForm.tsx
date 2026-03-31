@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { withdrawFromVault } from '../services/algorand'
+import { getExplorerTransactionUrl, withdrawFromVault } from '../services/algorand'
 
 interface Props {
   onClose: () => void
@@ -9,8 +9,7 @@ interface Props {
 }
 
 export default function WithdrawForm({ onClose, onSuccess, currentBalanceMicro }: Props) {
-  const { activeAddress, wallets } = useWallet()
-  const activeWallet = wallets?.find((w) => w.isActive) ?? wallets?.find((w) => w.isConnected)
+  const { activeAddress, signTransactions } = useWallet()
 
   const maxAlgo = currentBalanceMicro / 1_000_000
   const [amount, setAmount] = useState('')
@@ -23,12 +22,12 @@ export default function WithdrawForm({ onClose, onSuccess, currentBalanceMicro }
   const busy = status === 'signing' || status === 'confirming'
 
   const handleWithdraw = async () => {
-    if (!activeWallet || !activeAddress || !valid) return
+    if (!activeAddress || !valid) return
     setStatus('signing')
     setError(null)
     try {
       setStatus('confirming')
-      const id = await withdrawFromVault(activeWallet, activeAddress, numAmount)
+      const id = await withdrawFromVault(signTransactions, activeAddress, numAmount)
       setTxId(id)
       setStatus('done')
     } catch (e: any) {
@@ -60,7 +59,7 @@ export default function WithdrawForm({ onClose, onSuccess, currentBalanceMicro }
             <p className="text-sm text-gray-500 mb-1">{numAmount} ALGO withdrawn from vault</p>
             <p className="text-xs text-gray-400 font-mono mb-5 break-all bg-gray-50 rounded-lg px-3 py-2 mt-3">TxID: {txId}</p>
             <a
-              href={`https://lora.algokit.io/testnet/transaction/${txId}`}
+              href={txId ? getExplorerTransactionUrl(txId) : '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-sm text-[#2563EB] hover:underline font-semibold mb-6"

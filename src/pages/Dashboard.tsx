@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useWallet } from '@txnlab/use-wallet-react'
 import {
   getBalance,
@@ -39,7 +39,8 @@ function nextMilestone(currentAlgo: number) {
 }
 
 export default function Dashboard() {
-  const { activeAddress, wallets } = useWallet()
+  const { activeAddress, wallets, signTransactions } = useWallet()
+  const navigate = useNavigate()
 
   const [balance, setBalance] = useState('...')
   const [userStats, setUserStats] = useState({ totalSaved: 0, milestone: 0, streak: 0, lastDeposit: 0 })
@@ -85,15 +86,23 @@ export default function Dashboard() {
   const progressPct = next
     ? Math.min(100, ((savedAlgo - prevThreshold) / (next.threshold - prevThreshold)) * 100)
     : 100
+  const questSteps = [
+    { label: 'Connect wallet', done: !!activeAddress },
+    { label: 'Opt in to vault', done: optedIn === true },
+    { label: 'Make first deposit', done: userStats.totalSaved > 0 },
+    { label: 'Claim first badge', done: userStats.milestone >= 1 },
+  ]
 
   const handleOptIn = async () => {
-    if (!activeWallet) return
+    if (!activeAddress) return
     setOptingIn(true)
     try {
-      await optInToVault(activeWallet, activeAddress)
+      await optInToVault(signTransactions, activeAddress)
       setOptedIn(true)
-    } catch (e) {
+      refreshData()
+    } catch (e: any) {
       console.error('Opt-in failed:', e)
+      alert(e?.message || 'Opt-in failed. Please try again.')
     } finally {
       setOptingIn(false)
     }
@@ -176,7 +185,7 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="mx-auto max-w-6xl px-6 py-8 space-y-8">
+      <div className="mx-auto max-w-6xl px-6 py-8 pb-28 space-y-8">
         {/* OPT-IN BANNER */}
         {optedIn === false && (
           <div className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl px-6 py-5 card-shadow">
@@ -221,6 +230,27 @@ export default function Dashboard() {
           </div>
         </div>
 
+        <div className="rounded-2xl border border-gray-100 p-5 bg-white card-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-gray-900 text-base">Pack A Winning Features</h3>
+            <span className="text-xs text-gray-500">Live on-chain modules</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <button onClick={() => navigate('/pact')} className="text-left rounded-xl border border-gray-100 bg-gradient-to-br from-violet-50 to-white p-4 hover:shadow-sm">
+              <div className="text-sm font-semibold text-gray-900">Savings Pact</div>
+              <div className="text-xs text-gray-500 mt-1">2-person accountability with penalty flow.</div>
+            </button>
+            <button onClick={() => navigate('/temptation-lock')} className="text-left rounded-xl border border-gray-100 bg-gradient-to-br from-rose-50 to-white p-4 hover:shadow-sm">
+              <div className="text-sm font-semibold text-gray-900">Temptation Lock</div>
+              <div className="text-xs text-gray-500 mt-1">Early withdraw penalty to chosen sink.</div>
+            </button>
+            <button onClick={() => navigate('/dream-board')} className="text-left rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50 to-white p-4 hover:shadow-sm">
+              <div className="text-sm font-semibold text-gray-900">Dream Board</div>
+              <div className="text-xs text-gray-500 mt-1">Store your goal image + title on-chain.</div>
+            </button>
+          </div>
+        </div>
+
         {/* STAT CARDS */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {STAT_CARDS.map((card) => (
@@ -239,13 +269,29 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* AI SAVINGS COACH */}
-        <SavingsCoach
-          totalSaved={savedAlgo}
-          streak={userStats.streak}
-          milestone={userStats.milestone}
-          vaultType={vaultType}
-        />
+        <div className="rounded-2xl border border-gray-100 p-5 bg-white card-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-gray-900 text-base">Gamified Savings Quest</h3>
+            <span className="text-xs text-gray-500">{questSteps.filter((s) => s.done).length}/4 complete</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5">
+            {questSteps.map((step, i) => {
+              const isNext = !step.done && (i === 0 || questSteps[i - 1].done)
+              return (
+                <div key={step.label} className={`rounded-xl px-3 py-2.5 border text-sm flex items-center gap-2 transition-all ${step.done ? 'bg-green-50 border-green-200 text-green-700' : isNext ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+                  {step.done ? (
+                    <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                  ) : isNext ? (
+                    <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse flex-shrink-0" />
+                  ) : (
+                    <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                  )}
+                  <span className={step.done ? 'line-through' : ''}>{step.label}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
         {/* PROGRESS SECTION */}
         <div className="rounded-2xl border border-gray-100 p-6 bg-white card-shadow">
@@ -259,11 +305,14 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4 mb-3">
             <div className="text-sm font-bold text-gray-800 min-w-[60px]">{savedAlgo.toFixed(2)}</div>
-            <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden relative">
               <div
-                className="h-full bg-gradient-to-r from-[#2563EB] to-[#7c3aed] rounded-full transition-all duration-700 ease-out"
+                className="h-full bg-gradient-to-r from-[#2563EB] to-[#7c3aed] rounded-full transition-all duration-700 ease-out relative"
                 style={{ width: `${progressPct}%` }}
-              />
+              >
+                <div className="absolute inset-0 progress-shimmer rounded-full" />
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow-sm">{progressPct > 8 ? `${progressPct.toFixed(0)}%` : ''}</span>
+              </div>
             </div>
             <div className="text-sm font-bold text-gray-800 min-w-[60px] text-right">{next?.threshold ?? 100} ALGO</div>
           </div>
@@ -318,6 +367,7 @@ export default function Dashboard() {
       {showDeposit && (
         <DepositForm
           vaultType={vaultType}
+          currentSavedAlgo={savedAlgo}
           onClose={() => setShowDeposit(false)}
           onSuccess={() => { setShowDeposit(false); refreshData() }}
         />
@@ -330,6 +380,15 @@ export default function Dashboard() {
           onSuccess={() => { setShowWithdraw(false); refreshData() }}
         />
       )}
+
+      <SavingsCoach
+        address={activeAddress}
+        totalSaved={savedAlgo}
+        streak={userStats.streak}
+        milestone={userStats.milestone}
+        vaultType={vaultType}
+        onOpenDeposit={() => setShowDeposit(true)}
+      />
     </div>
   )
 }

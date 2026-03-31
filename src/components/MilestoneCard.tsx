@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { claimBadge } from '../services/algorand'
+import { claimBadge, getExplorerTransactionUrl } from '../services/algorand'
 
 interface MilestoneData {
   level: number
@@ -75,8 +75,7 @@ function SingleCard({
   canClaim: boolean
   onBadgeClaimed: () => void
 }) {
-  const { activeAddress, wallets } = useWallet()
-  const activeWallet = wallets?.find((w) => w.isActive) ?? wallets?.find((w) => w.isConnected)
+  const { activeAddress, signTransactions } = useWallet()
 
   const [claiming, setClaiming] = useState(false)
   const [txId, setTxId] = useState<string | null>(null)
@@ -84,13 +83,14 @@ function SingleCard({
   const [showShare, setShowShare] = useState(false)
 
   const progress = Math.min(100, (savedAlgo / milestone.threshold) * 100)
+  const nearUnlock = !unlocked && progress >= 85
 
   const handleClaim = async () => {
-    if (!activeWallet || !activeAddress) return
+    if (!activeAddress) return
     setClaiming(true)
     setError(null)
     try {
-      const id = await claimBadge(activeWallet, activeAddress, milestone.level)
+      const id = await claimBadge(signTransactions, activeAddress, milestone.level)
       setTxId(id)
       setShowShare(true)
       onBadgeClaimed()
@@ -126,6 +126,12 @@ function SingleCard({
 
         <h3 className="font-bold text-gray-900 text-base mb-0.5">{milestone.name}</h3>
         <p className="text-sm text-gray-500 mb-4">{milestone.threshold} ALGO threshold</p>
+        {nearUnlock && (
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold px-2.5 py-1 border border-amber-100 animate-pulse">
+            <span>⚡</span>
+            One deposit away
+          </div>
+        )}
 
         {/* Progress */}
         <div className="mb-4">
@@ -162,7 +168,7 @@ function SingleCard({
 
         {claimed && txId && (
           <a
-            href={`https://lora.algokit.io/testnet/transaction/${txId}`}
+            href={getExplorerTransactionUrl(txId)}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-1 text-xs text-[#2563EB] hover:underline font-semibold mt-2"

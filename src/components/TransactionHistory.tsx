@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getTransactionHistory } from '../services/algorand'
 
 interface Props {
@@ -9,6 +9,7 @@ interface Txn {
   txId: string
   amount: number
   type: string
+  action: string
   timestamp: number
   loraUrl: string
 }
@@ -20,26 +21,32 @@ function formatTime(ts: number) {
 }
 
 const TX_STYLES: Record<string, { label: string; bg: string; text: string }> = {
+  Deposit: { label: 'Deposit', bg: 'bg-blue-50', text: 'text-blue-700' },
+  'App Call': { label: 'App Call', bg: 'bg-violet-50', text: 'text-violet-700' },
   pay: { label: 'Payment', bg: 'bg-blue-50', text: 'text-blue-700' },
   appl: { label: 'App Call', bg: 'bg-violet-50', text: 'text-violet-700' },
   axfer: { label: 'Asset Transfer', bg: 'bg-emerald-50', text: 'text-emerald-700' },
 }
 
-function txStyle(type: string) {
-  return TX_STYLES[type] ?? { label: type.toUpperCase(), bg: 'bg-gray-50', text: 'text-gray-600' }
+function txStyle(action: string, type: string) {
+  return TX_STYLES[action] ?? TX_STYLES[type] ?? { label: action || type.toUpperCase(), bg: 'bg-gray-50', text: 'text-gray-600' }
 }
 
 export default function TransactionHistory({ address }: Props) {
   const [txns, setTxns] = useState<Txn[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const fetchHistory = useCallback(() => {
     setLoading(true)
     getTransactionHistory(address, 15)
       .then(setTxns)
       .catch(() => setTxns([]))
       .finally(() => setLoading(false))
   }, [address])
+
+  useEffect(() => {
+    fetchHistory()
+  }, [fetchHistory])
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden card-shadow">
@@ -50,7 +57,12 @@ export default function TransactionHistory({ address }: Props) {
           </div>
           <h3 className="font-bold text-gray-900">Transaction History</h3>
         </div>
-        <span className="text-xs text-gray-400 font-medium">{txns.length} transactions</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-400 font-medium">{txns.length} transactions</span>
+          <button onClick={fetchHistory} className="text-xs font-semibold text-[#2563EB] hover:underline">
+            Refresh
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -80,7 +92,7 @@ export default function TransactionHistory({ address }: Props) {
             </thead>
             <tbody>
               {txns.map((t) => {
-                const style = txStyle(t.type)
+                const style = txStyle(t.action, t.type)
                 return (
                   <tr key={t.txId} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{formatTime(t.timestamp)}</td>

@@ -2,6 +2,9 @@ import WalletConnect from './components/WalletConnect';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useWallet } from '@txnlab/use-wallet-react';
 import Dashboard from './pages/Dashboard';
+import SavingsPact from './pages/SavingsPact';
+import TemptationLock from './pages/TemptationLock';
+import DreamBoard from './pages/DreamBoard';
 
 function FloatingCard({ className, children }: { className: string; children: React.ReactNode }) {
   return (
@@ -169,6 +172,9 @@ function App() {
       <Routes>
         <Route path="/" element={activeAddress ? <Navigate to="/dashboard" replace /> : <Landing />} />
         <Route path="/dashboard" element={activeAddress ? <Dashboard /> : <Navigate to="/" replace />} />
+        <Route path="/pact" element={activeAddress ? <SavingsPact /> : <Navigate to="/" replace />} />
+        <Route path="/temptation-lock" element={activeAddress ? <TemptationLock /> : <Navigate to="/" replace />} />
+        <Route path="/dream-board" element={activeAddress ? <DreamBoard /> : <Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

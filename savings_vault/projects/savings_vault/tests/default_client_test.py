@@ -1,3 +1,5 @@
+import os
+
 import algokit_utils
 import pytest
 from algokit_utils import (
@@ -14,6 +16,9 @@ from smart_contracts.artifacts.default.default_client import (
 
 @pytest.fixture()
 def deployer(algorand_client: AlgorandClient) -> SigningAccount:
+    mnemonic = os.getenv("DEPLOYER_MNEMONIC", "")
+    if len(mnemonic.split()) != 25:
+        pytest.skip("DEPLOYER_MNEMONIC is not configured with 25 words; skipping integration tests.")
     account = algorand_client.account.from_environment("DEPLOYER")
     algorand_client.account.ensure_funded_from_environment(
         account_to_fund=account.address, min_spending_balance=AlgoAmount.from_algo(10)

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { depositToVault } from '../services/algorand'
+import confetti from 'canvas-confetti'
+import { depositToVault, getExplorerTransactionUrl } from '../services/algorand'
 
 interface Props {
   onClose: () => void
   onSuccess: (milestoneReached?: boolean) => void
   vaultType: string
+  currentSavedAlgo: number
 }
 
 const VAULT_MESSAGES: Record<string, string> = {
@@ -21,9 +23,8 @@ function truncateAddr(addr: string) {
   return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '\u2014'
 }
 
-export default function DepositForm({ onClose, onSuccess, vaultType }: Props) {
-  const { activeAddress, wallets } = useWallet()
-  const activeWallet = wallets?.find((w) => w.isActive) ?? wallets?.find((w) => w.isConnected)
+export default function DepositForm({ onClose, onSuccess, vaultType, currentSavedAlgo }: Props) {
+  const { activeAddress, signTransactions } = useWallet()
 
   const [amount, setAmount] = useState('')
   const [status, setStatus] = useState<'idle' | 'signing' | 'confirming' | 'done' | 'error'>('idle')
@@ -34,16 +35,19 @@ export default function DepositForm({ onClose, onSuccess, vaultType }: Props) {
   const valid = numAmount >= 1 && !isNaN(numAmount)
   const microAlgo = valid ? Math.round(numAmount * 1_000_000) : 0
   const fee = 0.002
+  const projectedTotal = valid ? currentSavedAlgo + numAmount : currentSavedAlgo
+  const nextMilestone = projectedTotal < 10 ? 10 : projectedTotal < 50 ? 50 : projectedTotal < 100 ? 100 : null
 
   const handleDeposit = async () => {
-    if (!activeWallet || !activeAddress || !valid) return
+    if (!activeAddress || !valid) return
     setStatus('signing')
     setError(null)
     try {
       setStatus('confirming')
-      const id = await depositToVault(activeWallet, activeAddress, numAmount)
+      const id = await depositToVault(signTransactions, activeAddress, numAmount)
       setTxId(id)
       setStatus('done')
+      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } })
     } catch (e: any) {
       const msg = e?.message ?? 'Transaction failed'
       if (msg.includes('rejected')) {
@@ -77,7 +81,7 @@ export default function DepositForm({ onClose, onSuccess, vaultType }: Props) {
             <p className="text-sm text-gray-500 mb-1">{numAmount} ALGO deposited to vault</p>
             <p className="text-xs text-gray-400 font-mono mb-5 break-all bg-gray-50 rounded-lg px-3 py-2 mt-3">TxID: {txId}</p>
             <a
-              href={`https://lora.algokit.io/testnet/transaction/${txId}`}
+              href={txId ? getExplorerTransactionUrl(txId) : '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-sm text-[#2563EB] hover:underline font-semibold mb-6"
@@ -128,6 +132,25 @@ export default function DepositForm({ onClose, onSuccess, vaultType }: Props) {
                 {valid && (
                   <p className="text-xs text-gray-400 mt-1.5 ml-1">{microAlgo.toLocaleString()} microALGO</p>
                 )}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {[1, 3, 5, 10].map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setAmount(String(v))}
+                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 bg-white hover:bg-gray-50"
+                    >
+                      +{v} ALGO
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm">
+                <p className="text-blue-700 font-semibold">After deposit: {projectedTotal.toFixed(2)} ALGO</p>
+                <p className="text-blue-600 text-xs mt-1">
+                  {nextMilestone ? `Only ${(nextMilestone - projectedTotal).toFixed(2)} ALGO to unlock ${nextMilestone === 10 ? 'Vault Starter' : nextMilestone === 50 ? 'Vault Builder' : 'Vault Master'}.` : 'All milestone thresholds reached. Keep compounding!'}
+                </p>
               </div>
 
               <div className="bg-gray-50 rounded-xl p-4 space-y-2.5 text-sm mb-5">
