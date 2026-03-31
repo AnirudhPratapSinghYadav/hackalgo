@@ -7,13 +7,22 @@ interface Props {
   onClose: () => void
   onSuccess: (milestoneReached?: boolean) => void
   currentSavedAlgo: number
+  milestonesAlgo: { m1: number; m2: number; m3: number } | null
 }
 
 function truncateAddr(addr: string) {
   return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '\u2014'
 }
 
-export default function DepositForm({ onClose, onSuccess, currentSavedAlgo }: Props) {
+function milestoneLabel(threshold: number, thresholds: number[]) {
+  const idx = thresholds.findIndex((t) => t === threshold)
+  if (idx === 0) return 'Vault Starter'
+  if (idx === 1) return 'Vault Builder'
+  if (idx === 2) return 'Vault Master'
+  return 'next milestone'
+}
+
+export default function DepositForm({ onClose, onSuccess, currentSavedAlgo, milestonesAlgo }: Props) {
   const { activeAddress, signTransactions } = useWallet()
 
   const [amount, setAmount] = useState('')
@@ -26,7 +35,8 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo }: Pr
   const microAlgo = valid ? Math.round(numAmount * 1_000_000) : 0
   const fee = 0.003
   const projectedTotal = valid ? currentSavedAlgo + numAmount : currentSavedAlgo
-  const nextMilestone = projectedTotal < 10 ? 10 : projectedTotal < 50 ? 50 : projectedTotal < 100 ? 100 : null
+  const thresholds = milestonesAlgo ? [milestonesAlgo.m1, milestonesAlgo.m2, milestonesAlgo.m3].filter((n) => Number.isFinite(n) && n > 0) : []
+  const nextMilestone = thresholds.length === 3 ? (thresholds.find((t) => projectedTotal < t) ?? null) : null
 
   const handleDeposit = async () => {
     if (!activeAddress || !valid) return
@@ -143,7 +153,11 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo }: Pr
               <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm">
                 <p className="text-blue-700 font-semibold">After deposit: {projectedTotal.toFixed(2)} ALGO</p>
                 <p className="text-blue-600 text-xs mt-1">
-                  {nextMilestone ? `Only ${(nextMilestone - projectedTotal).toFixed(2)} ALGO to unlock ${nextMilestone === 10 ? 'Vault Starter' : nextMilestone === 50 ? 'Vault Builder' : 'Vault Master'}.` : 'All milestone thresholds reached. Keep compounding!'}
+                  {thresholds.length !== 3
+                    ? 'Milestone thresholds are loading from on-chain global state.'
+                    : nextMilestone
+                      ? `Only ${(nextMilestone - projectedTotal).toFixed(2)} ALGO to unlock ${milestoneLabel(nextMilestone, thresholds)}.`
+                      : 'All milestone thresholds reached. Keep compounding!'}
                 </p>
               </div>
 

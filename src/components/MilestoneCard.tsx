@@ -15,37 +15,41 @@ interface MilestoneData {
   progressColor: string
 }
 
-const MILESTONES: MilestoneData[] = [
-  {
-    level: 1, name: 'Vault Starter', threshold: 10, icon: '\u{1F949}',
-    gradient: 'from-amber-400 to-orange-500',
-    glowClass: 'shadow-[0_0_20px_rgba(245,158,11,0.25)]',
-    progressColor: 'from-amber-400 to-orange-500',
-  },
-  {
-    level: 2, name: 'Vault Builder', threshold: 50, icon: '\u{1F948}',
-    gradient: 'from-gray-300 to-gray-500',
-    glowClass: 'shadow-[0_0_20px_rgba(156,163,175,0.3)]',
-    progressColor: 'from-gray-400 to-gray-600',
-  },
-  {
-    level: 3, name: 'Vault Master', threshold: 100, icon: '\u{1F947}',
-    gradient: 'from-yellow-300 to-yellow-500',
-    glowClass: 'shadow-[0_0_20px_rgba(234,179,8,0.3)]',
-    progressColor: 'from-yellow-400 to-yellow-600',
-  },
-]
+function buildMilestones(milestonesAlgo: { m1: number; m2: number; m3: number }): MilestoneData[] {
+  return [
+    {
+      level: 1, name: 'Vault Starter', threshold: milestonesAlgo.m1, icon: '\u{1F949}',
+      gradient: 'from-amber-400 to-orange-500',
+      glowClass: 'shadow-[0_0_20px_rgba(245,158,11,0.25)]',
+      progressColor: 'from-amber-400 to-orange-500',
+    },
+    {
+      level: 2, name: 'Vault Builder', threshold: milestonesAlgo.m2, icon: '\u{1F948}',
+      gradient: 'from-gray-300 to-gray-500',
+      glowClass: 'shadow-[0_0_20px_rgba(156,163,175,0.3)]',
+      progressColor: 'from-gray-400 to-gray-600',
+    },
+    {
+      level: 3, name: 'Vault Master', threshold: milestonesAlgo.m3, icon: '\u{1F947}',
+      gradient: 'from-yellow-300 to-yellow-500',
+      glowClass: 'shadow-[0_0_20px_rgba(234,179,8,0.3)]',
+      progressColor: 'from-yellow-400 to-yellow-600',
+    },
+  ]
+}
 
 interface Props {
   savedAlgo: number
   currentMilestone: number
   onBadgeClaimed: () => void
+  milestonesAlgo: { m1: number; m2: number; m3: number }
 }
 
-export default function MilestoneCards({ savedAlgo, currentMilestone, onBadgeClaimed }: Props) {
+export default function MilestoneCards({ savedAlgo, currentMilestone, onBadgeClaimed, milestonesAlgo }: Props) {
   const [openVault, setOpenVault] = useState(false)
+  const MILESTONES = buildMilestones(milestonesAlgo)
   return (
-    <div>
+    <div data-badge-vault-anchor="true">
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-bold text-gray-900 text-lg tracking-tight">Milestone Badges</h2>
         <button
@@ -74,6 +78,7 @@ export default function MilestoneCards({ savedAlgo, currentMilestone, onBadgeCla
           onClose={() => setOpenVault(false)}
           currentMilestone={currentMilestone}
           savedAlgo={savedAlgo}
+          milestonesAlgo={milestonesAlgo}
         />
       )}
     </div>
@@ -84,16 +89,19 @@ function BadgeVaultModal({
   onClose,
   currentMilestone,
   savedAlgo,
+  milestonesAlgo,
 }: {
   onClose: () => void
   currentMilestone: number
   savedAlgo: number
+  milestonesAlgo: { m1: number; m2: number; m3: number }
 }) {
   const { activeAddress } = useWallet()
   const [tab, setTab] = useState<'certificates' | 'asa_badges'>('certificates')
   const [selected, setSelected] = useState<number>(0)
   const [downloading, setDownloading] = useState(false)
 
+  const MILESTONES = buildMilestones(milestonesAlgo)
   const certificates = [
     { level: 0, name: 'Enrollment Certificate', icon: '📜', threshold: 0, desc: 'Certificate generated from your real application opt-in.' },
     ...MILESTONES.map((m) => ({ level: m.level, name: `${m.name} Certificate`, icon: m.icon, threshold: m.threshold, desc: `Certificate preview for reaching ${m.threshold} ALGO.` })),

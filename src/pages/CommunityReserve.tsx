@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '@txnlab/use-wallet-react'
 import {
@@ -15,21 +15,19 @@ import TransactionHistory from '../components/TransactionHistory'
 import AIChatbot from '../components/AIChatbot'
 import confetti from 'canvas-confetti'
 
-const RESERVE_MILESTONES = [
-  { label: 'Seed Fund', threshold: 10, icon: '\u{1F331}' },
-  { label: 'Ready Reserve', threshold: 50, icon: '\u{1F6E1}\uFE0F' },
-  { label: 'Full Protection', threshold: 100, icon: '\u{1F3D8}\uFE0F' },
-]
-
 export default function CommunityReserve() {
   const { activeAddress, wallets, signTransactions } = useWallet()
   const navigate = useNavigate()
 
   const [balance, setBalance] = useState('...')
+  const [dataLoading, setDataLoading] = useState(true)
   const [userStats, setUserStats] = useState({ totalSaved: 0, milestone: 0, streak: 0, lastDeposit: 0 })
   const [globalStats, setGlobalStats] = useState({ totalDeposited: 0, totalUsers: 0 })
+  const [milestones, setMilestones] = useState<{ m1: number; m2: number; m3: number } | null>(null)
+  const [milestoneError, setMilestoneError] = useState<string | null>(null)
   const [optedIn, setOptedIn] = useState<boolean | null>(null)
   const [optingIn, setOptingIn] = useState(false)
+  const [optInError, setOptInError] = useState<string | null>(null)
 
   const [depositAmount, setDepositAmount] = useState('')
   const [depositing, setDepositing] = useState(false)
@@ -38,16 +36,27 @@ export default function CommunityReserve() {
 
   const refreshData = useCallback(async () => {
     if (!activeAddress) return
-    const [bal, stats, global, opted] = await Promise.all([
-      getBalance(activeAddress),
-      getUserStats(activeAddress).catch(() => ({ totalSaved: 0, milestone: 0, streak: 0, lastDeposit: 0 })),
-      getGlobalStats().catch(() => ({ totalDeposited: 0, totalUsers: 0 })),
-      isOptedIn(activeAddress).catch(() => false),
-    ])
-    setBalance(bal)
-    setUserStats(stats)
-    setGlobalStats(global)
-    setOptedIn(opted)
+    setDataLoading(true)
+    try {
+      const [bal, stats, opted, global] = await Promise.all([
+        getBalance(activeAddress),
+        getUserStats(activeAddress),
+        isOptedIn(activeAddress),
+        getGlobalStats(),
+      ])
+      setBalance(bal)
+      setUserStats(stats)
+      setOptedIn(opted)
+      setGlobalStats({ totalDeposited: global.totalDeposited, totalUsers: global.totalUsers })
+      setMilestones(global.milestones)
+      setMilestoneError(null)
+    } catch (e: any) {
+      // Keep UI honest: do not flash zeros as “real” values during failure.
+      setMilestoneError(e?.message ?? 'Failed to load on-chain state.')
+      setMilestones(null)
+    } finally {
+      setDataLoading(false)
+    }
   }, [activeAddress])
 
   useEffect(() => { refreshData() }, [refreshData])
@@ -58,19 +67,29 @@ export default function CommunityReserve() {
   const truncated = `${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}`
   const savedAlgo = userStats.totalSaved / 1_000_000
   const globalAlgo = globalStats.totalDeposited / 1_000_000
-  const reserveTarget = 100
-  const reserveHealthPct = Math.min(100, (globalAlgo / reserveTarget) * 100)
+  const milestonesAlgo = milestones ? [milestones.m1, milestones.m2, milestones.m3].map((m) => m / 1_000_000) : null
+  const journeyMilestones = useMemo(() => {
+    if (!milestonesAlgo) return null
+    return [
+      { label: 'Seed Fund', threshold: milestonesAlgo[0], icon: '\u{1F331}' },
+      { label: 'Ready Reserve', threshold: milestonesAlgo[1], icon: '\u{1F6E1}\uFE0F' },
+      { label: 'Full Protection', threshold: milestonesAlgo[2], icon: '\u{1F3D8}\uFE0F' },
+    ]
+  }, [milestonesAlgo?.[0], milestonesAlgo?.[1], milestonesAlgo?.[2]])
+  const reserveTarget = milestonesAlgo ? milestonesAlgo[2] : null
+  const reserveHealthPct = reserveTarget && reserveTarget > 0 ? Math.min(100, (globalAlgo / reserveTarget) * 100) : 0
   const reserveStatus = reserveHealthPct >= 80 ? 'Ready' : reserveHealthPct >= 40 ? 'Building' : 'Needs Funding'
   const statusColor = reserveHealthPct >= 80 ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : reserveHealthPct >= 40 ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-red-600 bg-red-50 border-red-100'
 
   const handleOptIn = async () => {
     setOptingIn(true)
+    setOptInError(null)
     try {
       await optInToVault(signTransactions, activeAddress)
       setOptedIn(true)
       refreshData()
     } catch (e: any) {
-      alert(e?.message || 'Opt-in failed')
+      setOptInError(e?.message || 'Opt-in failed')
     } finally {
       setOptingIn(false)
     }
@@ -145,7 +164,14 @@ export default function CommunityReserve() {
       <div className="mx-auto max-w-6xl px-5 sm:px-6 py-8 space-y-6 pb-28">
         {/* OPT-IN BANNER */}
         {optedIn === false && (
-          <div className="flex flex-col sm:flex-row items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl px-6 py-5 gap-4">
+          <div className="flex flex-col bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl px-6 py-5 gap-3">
+            {optInError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-sm font-semibold text-red-700">Opt-in failed</p>
+                <p className="text-xs text-red-600 mt-1 break-words">{optInError}</p>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -158,6 +184,7 @@ export default function CommunityReserve() {
             <button onClick={handleOptIn} disabled={optingIn} className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all shadow-sm whitespace-nowrap">
               {optingIn ? 'Opting in...' : 'Join Now'}
             </button>
+            </div>
           </div>
         )}
 
@@ -171,15 +198,21 @@ export default function CommunityReserve() {
           </div>
           <div className="grid grid-cols-3 gap-4 mb-5">
             <div className="text-center">
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">{globalAlgo.toFixed(2)}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                {dataLoading ? <span className="inline-block w-20 h-8 bg-white/70 rounded-lg animate-pulse" /> : globalAlgo.toFixed(2)}
+              </p>
               <p className="text-xs text-gray-500 mt-1">ALGO Pooled</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">{globalStats.totalUsers}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                {dataLoading ? <span className="inline-block w-10 h-8 bg-white/70 rounded-lg animate-pulse" /> : globalStats.totalUsers}
+              </p>
               <p className="text-xs text-gray-500 mt-1">Community Members</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">{reserveHealthPct.toFixed(0)}%</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                {dataLoading ? <span className="inline-block w-12 h-8 bg-white/70 rounded-lg animate-pulse" /> : `${reserveHealthPct.toFixed(0)}%`}
+              </p>
               <p className="text-xs text-gray-500 mt-1">Target Reached</p>
             </div>
           </div>
@@ -190,21 +223,41 @@ export default function CommunityReserve() {
                 reserveHealthPct >= 40 ? 'bg-gradient-to-r from-amber-400 to-amber-600' :
                 'bg-gradient-to-r from-red-400 to-red-600'
               }`}
-              style={{ width: `${reserveHealthPct}%` }}
+              style={{ width: `${dataLoading ? 0 : reserveHealthPct}%` }}
             >
               <div className="absolute inset-0 progress-shimmer rounded-full" />
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-2">Target: {reserveTarget} ALGO community reserve</p>
+          <p className="text-xs text-gray-500 mt-2">
+            Target:{' '}
+            {reserveTarget ? (
+              <span className="font-semibold text-gray-700">{reserveTarget} ALGO</span>
+            ) : (
+              <span className="text-gray-400">Waiting for on-chain milestone_3…</span>
+            )}{' '}
+            community reserve
+          </p>
         </div>
 
         {/* JOURNEY */}
-        <ProgressJourney
-          savedAlgo={savedAlgo}
-          milestones={RESERVE_MILESTONES}
-          currentMilestone={userStats.milestone}
-          variant="community"
-        />
+        {milestoneError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+            <p className="text-sm font-semibold text-red-700">Milestone thresholds unavailable</p>
+            <p className="text-xs text-red-600 mt-1">{milestoneError}</p>
+          </div>
+        ) : !milestonesAlgo ? (
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+            <p className="text-sm font-semibold text-gray-700">Loading milestone thresholds from on-chain global state…</p>
+            <p className="text-xs text-gray-500 mt-1">This app does not use hardcoded milestone values.</p>
+          </div>
+        ) : (
+          <ProgressJourney
+            savedAlgo={savedAlgo}
+            milestones={journeyMilestones!}
+            currentMilestone={userStats.milestone}
+            variant="community"
+          />
+        )}
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* LEFT */}
@@ -330,7 +383,10 @@ export default function CommunityReserve() {
         totalSaved={savedAlgo}
         streak={userStats.streak}
         milestone={userStats.milestone}
+        milestonesAlgo={milestonesAlgo ? { m1: milestonesAlgo[0], m2: milestonesAlgo[1], m3: milestonesAlgo[2] } : null}
         onOpenDeposit={() => {}}
+        onOpenPact={() => navigate('/pact')}
+        onOpenLock={() => navigate('/temptation-lock')}
       />
     </div>
   )

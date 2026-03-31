@@ -1,4 +1,5 @@
 import { getTransactionHistory, getUserStats, getGlobalStats } from '../services/algorand'
+import { getNetworkConfig } from '../services/networkConfig'
 
 export interface ReportTxn {
   txId: string
@@ -32,6 +33,7 @@ export interface ReportData {
   streak: number
   milestone: number
   milestoneLabel: string
+  milestonesAlgo: { m1: number; m2: number; m3: number }
   globalDeposited: number
   globalUsers: number
   transactions: ReportTxn[]
@@ -62,12 +64,12 @@ function dayLabel(key: string): string {
 
 export async function buildReportData(address: string): Promise<ReportData> {
   const appId = Number(import.meta.env.VITE_APP_ID)
-  const network = (import.meta.env.VITE_NETWORK || 'testnet').toLowerCase()
+  const network = getNetworkConfig().network
 
   const [rawTxns, userStats, globalStats] = await Promise.all([
     getTransactionHistory(address, 50),
     getUserStats(address).catch(() => ({ totalSaved: 0, milestone: 0, streak: 0, lastDeposit: 0 })),
-    getGlobalStats().catch(() => ({ totalDeposited: 0, totalUsers: 0 })),
+    getGlobalStats(),
   ])
 
   const now = Math.floor(Date.now() / 1000)
@@ -130,6 +132,11 @@ export async function buildReportData(address: string): Promise<ReportData> {
     streak: userStats.streak,
     milestone: userStats.milestone,
     milestoneLabel: MILESTONE_NAMES[userStats.milestone] ?? `Level ${userStats.milestone}`,
+    milestonesAlgo: {
+      m1: globalStats.milestones.m1 / 1_000_000,
+      m2: globalStats.milestones.m2 / 1_000_000,
+      m3: globalStats.milestones.m3 / 1_000_000,
+    },
     globalDeposited: globalStats.totalDeposited / 1_000_000,
     globalUsers: globalStats.totalUsers,
     transactions,

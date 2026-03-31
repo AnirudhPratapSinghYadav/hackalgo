@@ -16,15 +16,21 @@ export interface UserContext {
   recentDeposits: string
   globalDeposited?: number
   globalContributors?: number
+  milestones?: { m1Algo: number; m2Algo: number; m3Algo: number }
 }
 
 function buildSystemPrompt(ctx: UserContext): string {
+  const milestoneLine = ctx.milestones
+    ? `- Milestone thresholds (on-chain global state): ${ctx.milestones.m1Algo} / ${ctx.milestones.m2Algo} / ${ctx.milestones.m3Algo} ALGO`
+    : '- Milestone thresholds: not available (on-chain global state not loaded)'
+
   return `You are AlgoVault AI — a friendly, knowledgeable advisor for a blockchain savings and community protection platform built on Algorand.
 
 REAL USER DATA (from Algorand blockchain, not hardcoded):
 - Wallet savings: ${ctx.totalSaved.toFixed(2)} ALGO
 - Deposit streak: ${ctx.streak} consecutive deposits
-- Milestone badge level: ${ctx.milestone}/3 (10 ALGO = Starter, 50 = Builder, 100 = Master)
+- Milestone badge level: ${ctx.milestone}/3
+${milestoneLine}
 - Temptation Lock: ${ctx.lockEnabled ? `ACTIVE — goal ${ctx.goalAmount.toFixed(0)} ALGO, ${ctx.penaltyPct}% early withdrawal penalty` : 'Not set'}
 - Recent deposits: ${ctx.recentDeposits || 'none yet'}
 ${typeof ctx.globalDeposited === 'number' && typeof ctx.globalContributors === 'number'
@@ -72,6 +78,37 @@ function buildVaultSummaryRequest(vault: VaultSummaryType): string {
 
 export async function generateVaultSummary(vault: VaultSummaryType, ctx: UserContext): Promise<string> {
   return await sendChatMessage([], buildVaultSummaryRequest(vault), ctx)
+}
+
+export async function generatePactGuide(
+  params: {
+    requiredAlgo: number
+    cadenceDays: number
+    penaltyAlgo: number
+    partnerAddress?: string
+    pactStatus?: 'pending' | 'active' | 'none'
+  },
+  ctx: UserContext,
+): Promise<string> {
+  const { requiredAlgo, cadenceDays, penaltyAlgo, partnerAddress, pactStatus } = params
+  const request = [
+    'Explain this Savings Pact to the user in a step-by-step, action-oriented way.',
+    'Use only the real numbers provided below. Do not invent any values.',
+    '',
+    `Pact parameters (on-chain or user-entered for the next on-chain transaction):`,
+    `- required amount: ${requiredAlgo.toFixed(2)} ALGO`,
+    `- cadence: ${Math.round(cadenceDays)} days`,
+    `- penalty: ${penaltyAlgo.toFixed(2)} ALGO`,
+    `- partner address: ${partnerAddress ? partnerAddress : 'not set'}`,
+    `- current pact status: ${pactStatus ?? 'unknown'}`,
+    '',
+    'Output format:',
+    '- 6 bullets max',
+    '- Each bullet should be 1 sentence',
+    '- Include at least 2 explicit next actions (e.g., "Create pact", "Ask partner to accept", "Make first deposit")',
+    '- Mention that enforcement is on-chain and verifiable on Lora',
+  ].join('\n')
+  return await sendChatMessage([], request, ctx)
 }
 
 export async function sendChatMessage(

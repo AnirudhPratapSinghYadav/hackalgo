@@ -156,7 +156,7 @@ export default function Landing() {
 
   useEffect(() => {
     getGlobalStats()
-      .then((s) => { setStats(s); setLoaded(true) })
+      .then((s) => { setStats({ totalDeposited: s.totalDeposited, totalUsers: s.totalUsers }); setLoaded(true) })
       .catch(() => setLoaded(true))
   }, [])
 

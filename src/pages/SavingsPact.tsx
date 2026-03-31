@@ -1,47 +1,122 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { applyPactPenalty, getExplorerTransactionUrl, getPactConfig, setupSavingsPact } from '../services/algorand'
+import { generatePactGuide } from '../services/aiService'
 
 export default function SavingsPact() {
   const { activeAddress, signTransactions, wallets } = useWallet()
 
   const [partner, setPartner] = useState('')
-  const [requiredAlgo, setRequiredAlgo] = useState('1')
-  const [cadenceDays, setCadenceDays] = useState('7')
-  const [penaltyAlgo, setPenaltyAlgo] = useState('0.1')
+  const [requiredAlgo, setRequiredAlgo] = useState('')
+  const [cadenceDays, setCadenceDays] = useState('')
+  const [penaltyAlgo, setPenaltyAlgo] = useState('')
   const [status, setStatus] = useState('')
   const [txId, setTxId] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busyCreate, setBusyCreate] = useState(false)
+  const [busyPenalty, setBusyPenalty] = useState(false)
   const [pact, setPact] = useState<{ enabled: number; requiredAmountMicro: number; cadenceSeconds: number; penaltyAmountMicro: number; userA: string; userB: string } | null>(null)
+  const [guideOpen, setGuideOpen] = useState(true)
+  const [guideLoading, setGuideLoading] = useState(false)
+  const [guideText, setGuideText] = useState<string>('')
+  const [guideError, setGuideError] = useState<string | null>(null)
 
-  useEffect(() => { getPactConfig().then(setPact).catch(() => undefined) }, [])
+  useEffect(() => {
+    getPactConfig()
+      .then((p) => {
+        setPact(p)
+        if (p?.enabled === 1) {
+          setRequiredAlgo(String((p.requiredAmountMicro / 1_000_000).toFixed(2)))
+          setCadenceDays(String(Math.round(p.cadenceSeconds / 86400)))
+          setPenaltyAlgo(String((p.penaltyAmountMicro / 1_000_000).toFixed(2)))
+          // If I'm a participant, default partner field for clarity.
+          if (activeAddress && (p.userA === activeAddress || p.userB === activeAddress)) {
+            const other = p.userA === activeAddress ? p.userB : p.userA
+            if (other) setPartner(other)
+          }
+        }
+      })
+      .catch(() => undefined)
+  }, [activeAddress])
 
   if (!activeAddress) return <Navigate to="/" replace />
 
   const truncated = `${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}`
   const disconnect = () => { wallets?.forEach((w) => { if (w.isConnected) w.disconnect() }) }
 
+  const requiredNum = Number(requiredAlgo)
+  const cadenceNum = Number(cadenceDays)
+  const penaltyNum = Number(penaltyAlgo)
+  const canCreate =
+    partner.length === 58 &&
+    Number.isFinite(requiredNum) && requiredNum > 0 &&
+    Number.isFinite(cadenceNum) && cadenceNum > 0 &&
+    Number.isFinite(penaltyNum) && penaltyNum > 0
+
   const onCreatePact = async () => {
-    if (!partner || partner.length !== 58) { setStatus('Enter a valid 58-character Algorand address'); return }
-    setBusy(true); setStatus('Waiting for wallet signature...')
+    if (!canCreate) { setStatus('Fill all fields with valid on-chain values (partner, required, cadence, penalty).'); return }
+    setBusyCreate(true); setStatus('Waiting for wallet signature...')
     try {
-      const id = await setupSavingsPact(signTransactions, activeAddress, partner, Number(requiredAlgo), Number(cadenceDays), Number(penaltyAlgo))
+      const id = await setupSavingsPact(signTransactions, activeAddress, partner, requiredNum, cadenceNum, penaltyNum)
       setTxId(id); setStatus('Savings pact created on-chain!')
       getPactConfig().then(setPact).catch(() => undefined)
-    } catch (e: any) { setStatus(e?.message || 'Transaction failed') } finally { setBusy(false) }
+    } catch (e: any) { setStatus(e?.message || 'Transaction failed') } finally { setBusyCreate(false) }
   }
 
   const onApplyPenalty = async () => {
     if (!partner || partner.length !== 58) { setStatus('Enter partner address first'); return }
-    setBusy(true); setStatus('Applying penalty...')
+    if (!Number.isFinite(penaltyNum) || penaltyNum <= 0) { setStatus('Enter a valid penalty amount'); return }
+    setBusyPenalty(true); setStatus('Applying penalty...')
     try {
-      const id = await applyPactPenalty(signTransactions, activeAddress, partner, Number(penaltyAlgo))
+      const id = await applyPactPenalty(signTransactions, activeAddress, partner, penaltyNum)
       setTxId(id); setStatus('Penalty applied on-chain!')
-    } catch (e: any) { setStatus(e?.message || 'Transaction failed') } finally { setBusy(false) }
+    } catch (e: any) { setStatus(e?.message || 'Transaction failed') } finally { setBusyPenalty(false) }
   }
 
   const pactActive = pact?.enabled === 1
+  const busy = busyCreate || busyPenalty
+  const stepStatus = useMemo(() => {
+    if (pactActive) return 'Active pact detected on-chain.'
+    if (partner.length === 58 && requiredAlgo && cadenceDays && penaltyAlgo) return 'Ready to create on-chain.'
+    return 'Configure pact parameters.'
+  }, [pactActive, partner.length, requiredAlgo, cadenceDays, penaltyAlgo])
+
+  const pactStatus: 'active' | 'none' = pactActive ? 'active' : 'none'
+
+  const onExplain = async () => {
+    setGuideOpen(true)
+    setGuideLoading(true)
+    setGuideError(null)
+    setGuideText('')
+    try {
+      if (!Number.isFinite(requiredNum) || !Number.isFinite(cadenceNum) || !Number.isFinite(penaltyNum) || requiredNum <= 0 || cadenceNum <= 0 || penaltyNum <= 0) {
+        throw new Error('Enter valid pact parameters first (required, cadence, penalty).')
+      }
+      const text = await generatePactGuide(
+        {
+          requiredAlgo: requiredNum,
+          cadenceDays: cadenceNum,
+          penaltyAlgo: penaltyNum,
+          partnerAddress: partner.length === 58 ? partner : undefined,
+          pactStatus,
+        },
+        {
+          totalSaved: 0,
+          streak: 0,
+          milestone: 0,
+          lockEnabled: false,
+          goalAmount: 0,
+          penaltyPct: 0,
+          recentDeposits: 'unknown',
+        },
+      )
+      setGuideText(text)
+    } catch (e: any) {
+      setGuideError(e?.message ?? 'Could not generate pact guide.')
+    } finally {
+      setGuideLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f8f9fb] font-sans">
@@ -115,13 +190,14 @@ export default function SavingsPact() {
                   </div>
                 </div>
                 <div className="flex gap-3 pt-3">
-                  <button onClick={onCreatePact} disabled={busy} className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold text-sm disabled:opacity-50 shadow-md shadow-violet-500/20 transition-all">
-                    {busy ? 'Signing...' : 'Create Savings Pact'}
+                  <button onClick={onCreatePact} disabled={busy || !canCreate} className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold text-sm disabled:opacity-50 shadow-md shadow-violet-500/20 transition-all">
+                    {busyCreate ? 'Signing...' : 'Create Savings Pact'}
                   </button>
-                  <button onClick={onApplyPenalty} disabled={busy} className="px-6 py-3.5 rounded-xl border-2 border-red-200 text-red-600 font-semibold text-sm hover:bg-red-50 hover:border-red-300 disabled:opacity-50 transition-all">
-                    Enforce Penalty
+                  <button onClick={onApplyPenalty} disabled={busy || !partner || partner.length !== 58} className="px-6 py-3.5 rounded-xl border-2 border-red-200 text-red-600 font-semibold text-sm hover:bg-red-50 hover:border-red-300 disabled:opacity-50 transition-all">
+                    {busyPenalty ? 'Applying...' : 'Enforce Penalty'}
                   </button>
                 </div>
+                <p className="text-xs text-gray-500">{stepStatus}</p>
                 {status && <div className={`rounded-xl px-4 py-3 text-sm font-medium ${status.includes('fail') || status.includes('Enter') ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-violet-50 text-violet-700 border border-violet-100'}`}>{status}</div>}
                 {txId && (
                   <a className="inline-flex items-center gap-1.5 text-sm text-violet-600 font-semibold hover:underline" href={getExplorerTransactionUrl(txId)} target="_blank" rel="noreferrer">
@@ -135,6 +211,42 @@ export default function SavingsPact() {
 
           {/* RIGHT SIDEBAR */}
           <div className="space-y-6">
+            {/* GEMINI PACT GUIDE */}
+            <div className="rounded-2xl bg-white border border-gray-100 p-6 card-shadow">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">Pact Guide (Gemini)</h3>
+                <button
+                  onClick={() => setGuideOpen((v) => !v)}
+                  className="text-xs font-semibold text-gray-500 hover:text-gray-900 hover:underline"
+                >
+                  {guideOpen ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Actionable explanation using your real pact parameters.</p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={onExplain}
+                  disabled={guideLoading}
+                  className="px-4 py-2 rounded-xl bg-violet-50 text-violet-700 border border-violet-100 text-xs font-bold hover:bg-violet-100 disabled:opacity-50"
+                >
+                  {guideLoading ? 'Explaining…' : 'Explain this pact'}
+                </button>
+              </div>
+              {guideOpen && (
+                <div className="mt-3">
+                  {guideError && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{guideError}</p>}
+                  {guideText && (
+                    <div className="text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 whitespace-pre-wrap leading-relaxed">
+                      {guideText}
+                    </div>
+                  )}
+                  {!guideText && !guideError && (
+                    <p className="text-xs text-gray-400">Tap “Explain this pact” to generate a guide. No numbers are invented.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* HOW IT WORKS */}
             <div className="rounded-2xl bg-white border border-gray-100 p-6 card-shadow">
               <h3 className="font-bold text-gray-900 text-sm mb-4 uppercase tracking-wider">How It Works</h3>

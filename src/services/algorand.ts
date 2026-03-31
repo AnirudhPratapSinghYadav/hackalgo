@@ -1,9 +1,11 @@
 import algosdk, { type Algodv2, type SuggestedParams } from 'algosdk'
+import { base64ToBytes, decodeAppCallArgs, decodeArc69Note, decodeGlobalStateKv, decodeLocalStateKv, decodeLogs, tryDecodeJsonFromBytes, tryDecodeUtf8 } from '../utils/algorandDecode'
+import { getNetworkConfig } from './networkConfig'
 
 export type SignTransactionsFn = (txns: Uint8Array[]) => Promise<(Uint8Array | null)[]>
 
 const APP_ID = Number(import.meta.env.VITE_APP_ID)
-const NETWORK = (import.meta.env.VITE_NETWORK || 'testnet').toLowerCase()
+const NETWORK = getNetworkConfig().network
 
 /** MicroAlgo flat fees — explicit so grouped txns and inner-txn-heavy calls have enough budget. */
 const FEE_OPT_IN = 1000
@@ -16,6 +18,14 @@ const FEE_PAY_PACT = 1000
 const FEE_APP_PACT = 2000
 
 let loggedVaultConfig = false
+let loggedMilestones = false
+
+// Performance: avoid repeated algod/indexer round-trips on first paint.
+// These caches are in-memory only (safe for Vercel/static hosting) and never “invent” data.
+const ACCOUNT_INFO_TTL_MS = 10_000
+const APP_INFO_TTL_MS = 10_000
+const accountInfoCache = new Map<string, { ts: number; promise: Promise<any> }>()
+let appInfoCache: { ts: number; promise: Promise<any> } | null = null
 
 // ARC-4 method selectors computed from signatures to avoid hardcoded drift.
 const SELECTOR_OPT_IN = new algosdk.ABIMethod({ name: 'opt_in', args: [], returns: { type: 'void' } }).getSelector()
@@ -63,17 +73,10 @@ export async function getContractMode(): Promise<VaultContractMode> {
   return await detectContractMode()
 }
 
-function selectorHex(selector: Uint8Array): string {
+export function selectorHex(selector: Uint8Array): string {
   return Array.from(selector)
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  const raw = atob(b64)
-  const out = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i)
-  return out
 }
 
 async function detectContractMode(): Promise<VaultContractMode> {
@@ -106,12 +109,8 @@ function assertConfig() {
   if (!Number.isFinite(APP_ID) || APP_ID <= 0) {
     throw new Error('Invalid VITE_APP_ID. Set a valid app id in .env.')
   }
-  if (!import.meta.env.VITE_ALGOD_SERVER) {
-    throw new Error('Missing VITE_ALGOD_SERVER in .env.')
-  }
-  if (!import.meta.env.VITE_INDEXER_SERVER) {
-    throw new Error('Missing VITE_INDEXER_SERVER in .env.')
-  }
+  // Network endpoints validated in `getNetworkConfig()`; keep this check as a guardrail.
+  getNetworkConfig()
 }
 
 function withFlatFee(sp: SuggestedParams, fee: number): SuggestedParams {
@@ -150,14 +149,21 @@ function encodeTxnRefArg(txnIndex: number): Uint8Array {
   return Uint8Array.from([txnIndex])
 }
 
-function getIndexerPort(): number {
-  const configured = Number(import.meta.env.VITE_INDEXER_PORT || 443)
-  return Number.isFinite(configured) ? configured : 443
+function buildActionNote(action: string, fields: Record<string, unknown>): Uint8Array {
+  const payload = {
+    standard: 'algovault',
+    action,
+    ts: new Date().toISOString(),
+    app_id: APP_ID,
+    network: NETWORK,
+    ...fields,
+  }
+  return new TextEncoder().encode(JSON.stringify(payload))
 }
 
 function getLoraBaseUrl(): string {
-  const networkSegment = NETWORK === 'mainnet' ? 'mainnet' : NETWORK === 'localnet' ? 'localnet' : 'testnet'
-  return `https://lora.algokit.io/${networkSegment}`
+  const { loraNetworkSegment } = getNetworkConfig()
+  return `https://lora.algokit.io/${loraNetworkSegment}`
 }
 
 export function getExplorerTransactionUrl(txId: string): string {
@@ -176,29 +182,65 @@ export function getExplorerApplicationUrl(appId: number | string): string {
   return `${getLoraBaseUrl()}/application/${appId}`
 }
 
+export function getExplorerGroupUrl(groupIdBase64: string): string {
+  return `${getLoraBaseUrl()}/group/${groupIdBase64}`
+}
+
 export function getAlgodClient(): Algodv2 {
   assertConfig()
+  const net = getNetworkConfig()
   if (import.meta.env.DEV && !loggedVaultConfig) {
     loggedVaultConfig = true
     console.log('[AlgoVault] APP_ID:', APP_ID)
     console.log('[AlgoVault] APP_ADDRESS (derived):', algosdk.getApplicationAddress(APP_ID))
+    console.log('[AlgoVault] NETWORK:', net.network)
   }
   return new algosdk.Algodv2(
-    import.meta.env.VITE_ALGOD_TOKEN || '',
-    import.meta.env.VITE_ALGOD_SERVER,
-    Number(import.meta.env.VITE_ALGOD_PORT),
+    net.algod.token,
+    net.algod.server,
+    net.algod.port,
   )
 }
 
 export function getIndexerClient(): algosdk.Indexer {
   assertConfig()
-  return new algosdk.Indexer('', import.meta.env.VITE_INDEXER_SERVER, getIndexerPort())
+  const net = getNetworkConfig()
+  return new algosdk.Indexer('', net.indexer.server, net.indexer.port)
+}
+
+async function getAccountInformationCached(address: string): Promise<any> {
+  const now = Date.now()
+  const hit = accountInfoCache.get(address)
+  if (hit && now - hit.ts < ACCOUNT_INFO_TTL_MS) return await hit.promise
+  const algod = getAlgodClient()
+  const promise = algod.accountInformation(address).do()
+  accountInfoCache.set(address, { ts: now, promise })
+  try {
+    return await promise
+  } catch (e) {
+    // Do not cache failures.
+    if (accountInfoCache.get(address)?.promise === promise) accountInfoCache.delete(address)
+    throw e
+  }
+}
+
+async function getApplicationByIdCached(): Promise<any> {
+  const now = Date.now()
+  if (appInfoCache && now - appInfoCache.ts < APP_INFO_TTL_MS) return await appInfoCache.promise
+  const algod = getAlgodClient()
+  const promise = algod.getApplicationByID(APP_ID).do()
+  appInfoCache = { ts: now, promise }
+  try {
+    return await promise
+  } catch (e) {
+    if (appInfoCache?.promise === promise) appInfoCache = null
+    throw e
+  }
 }
 
 export async function getBalance(address: string): Promise<string> {
-  const algod = getAlgodClient()
   try {
-    const info = (await algod.accountInformation(address).do()) as { amount?: number }
+    const info = (await getAccountInformationCached(address)) as { amount?: number }
     const microAlgos = info.amount ?? 0
     return (microAlgos / 1_000_000).toFixed(2)
   } catch (e) {
@@ -261,11 +303,13 @@ export async function depositToVault(signTransactions: SignTransactionsFn, addre
   const spBase = await getSuggestedParams()
   const amountMicro = Math.round(amountAlgo * 1_000_000)
   const appAddr = getVaultAppAddress()
+  const note = buildActionNote('deposit', { user: address, amount_micro: amountMicro })
 
   const payTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
     to: appAddr,
     amount: amountMicro,
+    note,
     suggestedParams: withFlatFee(spBase, FEE_PAY_DEPOSIT),
   })
 
@@ -274,6 +318,7 @@ export async function depositToVault(signTransactions: SignTransactionsFn, addre
     appIndex: APP_ID,
     // ARC-4 txn arg: reference the payment txn by index (0) — matches SavingsVault.arc56.json deposit(pay)
     appArgs: [SELECTOR_DEPOSIT, encodeTxnRefArg(0)],
+    note,
     suggestedParams: withFlatFee(spBase, FEE_APP_DEPOSIT),
   })
 
@@ -286,6 +331,7 @@ export async function withdrawFromVault(signTransactions: SignTransactionsFn, ad
   const spBase = await getSuggestedParams()
   const amountMicro = Math.round(amountAlgo * 1_000_000)
   const mode = await detectContractMode()
+  const note = buildActionNote('withdraw', { user: address, amount_micro: amountMicro })
 
   const appCallTxn =
     mode === 'legacy_minimal'
@@ -293,6 +339,7 @@ export async function withdrawFromVault(signTransactions: SignTransactionsFn, ad
           from: address,
           appIndex: APP_ID,
           appArgs: [SELECTOR_WITHDRAW_LEGACY, algosdk.encodeUint64(amountMicro)],
+          note,
           suggestedParams: withFlatFee(spBase, FEE_APP_STANDARD),
         })
       : algosdk.makeApplicationNoOpTxnFromObject({
@@ -303,6 +350,7 @@ export async function withdrawFromVault(signTransactions: SignTransactionsFn, ad
             algosdk.encodeUint64(amountMicro),
             encodeAddressArg(penaltySinkAddress || address),
           ],
+          note,
           suggestedParams: withFlatFee(spBase, FEE_APP_WITHDRAW),
         })
 
@@ -321,16 +369,13 @@ export async function getUserStats(address: string): Promise<{
   streak: number
   lastDeposit: number
 }> {
-  const algod = getAlgodClient()
   try {
-    const info = (await algod.accountApplicationInformation(address, APP_ID).do()) as any
-    const kv = info?.['app-local-state']?.['key-value'] ?? []
+    const info = (await getAccountInformationCached(address)) as any
+    const local = (info?.['apps-local-state'] ?? []).find((a: any) => a.id === APP_ID)
+    const kv = local?.['key-value'] ?? []
 
-    const get = (key: string) => {
-      const b64 = btoa(key)
-      const entry = kv.find((x: any) => x.key === b64)
-      return decodeStateValue(entry?.value)
-    }
+    const getEntry = (key: string) => kv.find((x: any) => x.key === btoa(key))?.value
+    const get = (key: string) => decodeStateValue(getEntry(key))
 
     return {
       totalSaved: get('user_total'),
@@ -347,9 +392,9 @@ export async function getUserStats(address: string): Promise<{
 export async function getGlobalStats(): Promise<{
   totalDeposited: number
   totalUsers: number
+  milestones: { m1: number; m2: number; m3: number }
 }> {
-  const algod = getAlgodClient()
-  const app = (await algod.getApplicationByID(APP_ID).do()) as any
+  const app = (await getApplicationByIdCached()) as any
   const kv = app?.params?.['global-state'] ?? []
 
   const get = (key: string) => {
@@ -358,10 +403,300 @@ export async function getGlobalStats(): Promise<{
     return decodeStateValue(entry?.value)
   }
 
+  const milestones = {
+    m1: get('milestone_1'),
+    m2: get('milestone_2'),
+    m3: get('milestone_3'),
+  }
+  if (![milestones.m1, milestones.m2, milestones.m3].every((v) => Number.isFinite(v) && v > 0)) {
+    throw new Error('Missing milestone thresholds in on-chain global state (milestone_1/2/3).')
+  }
+  if (import.meta.env.DEV && !loggedMilestones) {
+    loggedMilestones = true
+    console.log('[AlgoVault] Milestones (microALGO):', milestones)
+    console.log('[AlgoVault] Milestones (ALGO):', {
+      m1: milestones.m1 / 1_000_000,
+      m2: milestones.m2 / 1_000_000,
+      m3: milestones.m3 / 1_000_000,
+    })
+  }
+
   return {
     totalDeposited: get('total_deposited'),
     totalUsers: get('total_users'),
+    milestones,
   }
+}
+
+export async function getMilestonesFromGlobalState(): Promise<{ m1: number; m2: number; m3: number }> {
+  const global = await getGlobalStats()
+  return global.milestones
+}
+
+export async function getGlobalStateTable(): Promise<ReturnType<typeof decodeGlobalStateKv>> {
+  const app = (await getApplicationByIdCached()) as any
+  const kv = app?.params?.['global-state'] ?? []
+  return decodeGlobalStateKv(kv)
+}
+
+export async function getLocalStateTable(address: string): Promise<ReturnType<typeof decodeLocalStateKv>> {
+  const info = (await getAccountInformationCached(address)) as any
+  const local = (info['apps-local-state'] ?? []).find((a: any) => a.id === APP_ID)
+  const kv = local?.['key-value'] ?? []
+  return decodeLocalStateKv(kv)
+}
+
+function extractLocalKvFromAccountInfo(info: any): any[] {
+  const local = (info?.['apps-local-state'] ?? []).find((a: any) => a.id === APP_ID)
+  return local?.['key-value'] ?? []
+}
+
+function localUIntFromKv(kv: any[], key: string): number {
+  const entry = kv.find((x: any) => x.key === btoa(key))?.value
+  return decodeStateValue(entry)
+}
+
+export async function getLocalStateSnapshot(address: string): Promise<{
+  totalSavedMicro: number
+  streak: number
+  milestone: number
+}> {
+  const info = (await getAccountInformationCached(address)) as any
+  const kv = extractLocalKvFromAccountInfo(info)
+  return {
+    totalSavedMicro: localUIntFromKv(kv, 'user_total'),
+    streak: localUIntFromKv(kv, 'user_streak'),
+    milestone: localUIntFromKv(kv, 'user_milestone'),
+  }
+}
+
+export async function getLocalStateSnapshotAtRound(address: string, round: number): Promise<{
+  round: number
+  totalSavedMicro: number
+  streak: number
+  milestone: number
+}> {
+  const algod = getAlgodClient()
+  // Historical read for BEFORE/AFTER without guessing.
+  const req: any = algod.accountInformation(address)
+  const info = (await (typeof req.round === 'function' ? req.round(round) : req).do()) as any
+  const kv = extractLocalKvFromAccountInfo(info)
+  return {
+    round,
+    totalSavedMicro: localUIntFromKv(kv, 'user_total'),
+    streak: localUIntFromKv(kv, 'user_streak'),
+    milestone: localUIntFromKv(kv, 'user_milestone'),
+  }
+}
+
+export async function getBoxProof(): Promise<
+  | { used: false; reason: string }
+  | {
+      used: true
+      boxes: Array<{
+        keyBase64: string
+        keyUtf8: string
+        keyHex: string
+        size: number
+        valueType: 'json' | 'utf8' | 'bytes'
+        valuePreview: string
+      }>
+    }
+> {
+  const algod = getAlgodClient()
+  const res = (await algod.getApplicationBoxes(APP_ID).do()) as any
+  const boxes = (res?.boxes ?? []) as any[]
+  if (!Array.isArray(boxes) || boxes.length === 0) {
+    return { used: false, reason: 'No boxes found via algod.getApplicationBoxes(appId).' }
+  }
+
+  const out: Array<{
+    keyBase64: string
+    keyUtf8: string
+    keyHex: string
+    size: number
+    valueType: 'json' | 'utf8' | 'bytes'
+    valuePreview: string
+  }> = []
+
+  for (const b of boxes.slice(0, 40)) {
+    const nameB64 = String(b?.name ?? '')
+    if (!nameB64) continue
+    const keyBytes = base64ToBytes(nameB64)
+    const keyUtf8 = tryDecodeUtf8(keyBytes) ?? ''
+    const keyHex = Array.from(keyBytes).map((x) => x.toString(16).padStart(2, '0')).join('')
+    try {
+      const box = (await algod.getApplicationBoxByName(APP_ID, keyBytes).do()) as any
+      const valueB64 = String(box?.value ?? '')
+      const valueBytes = valueB64 ? base64ToBytes(valueB64) : new Uint8Array()
+      const size = valueBytes.length
+      const json = tryDecodeJsonFromBytes(valueBytes)
+      if (json !== null) {
+        out.push({ keyBase64: nameB64, keyUtf8: keyUtf8 || '(non-utf8)', keyHex, size, valueType: 'json', valuePreview: JSON.stringify(json).slice(0, 220) })
+        continue
+      }
+      const utf8 = tryDecodeUtf8(valueBytes)
+      if (utf8 !== null) {
+        out.push({ keyBase64: nameB64, keyUtf8: keyUtf8 || '(non-utf8)', keyHex, size, valueType: 'utf8', valuePreview: utf8.slice(0, 220) })
+        continue
+      }
+      out.push({
+        keyBase64: nameB64,
+        keyUtf8: keyUtf8 || '(non-utf8)',
+        keyHex,
+        size,
+        valueType: 'bytes',
+        valuePreview: Array.from(valueBytes.slice(0, 32)).map((x) => x.toString(16).padStart(2, '0')).join(''),
+      })
+    } catch {
+      // Box exists but cannot be read (permissions/size). Keep a row anyway.
+      out.push({ keyBase64: nameB64, keyUtf8: keyUtf8 || '(non-utf8)', keyHex, size: 0, valueType: 'bytes', valuePreview: 'unreadable' })
+    }
+  }
+
+  return { used: true, boxes: out }
+}
+
+export async function getPendingTxnDetails(txId: string): Promise<{
+  logs: ReturnType<typeof decodeLogs>
+  innerTxns: Array<{ txType: string; sender?: string; receiver?: string; amount?: number; createdAssetId?: number }>
+}> {
+  const algod = getAlgodClient()
+  const p = (await algod.pendingTransactionInformation(txId).do()) as any
+  const logs = decodeLogs(p?.logs) ?? []
+  const inner = (p?.['inner-txns'] ?? []) as any[]
+  const innerTxns = Array.isArray(inner)
+    ? inner.map((it: any) => ({
+        txType: String(it?.['tx-type'] ?? 'UNKNOWN'),
+        sender: typeof it?.sender === 'string' ? it.sender : undefined,
+        receiver: typeof it?.['payment-transaction']?.receiver === 'string' ? it['payment-transaction'].receiver : undefined,
+        amount: typeof it?.['payment-transaction']?.amount === 'number' ? it['payment-transaction'].amount : undefined,
+        createdAssetId: typeof it?.['created-asset-index'] === 'number' ? it['created-asset-index'] : undefined,
+      }))
+    : []
+  return { logs, innerTxns }
+}
+
+type ProtocolTxnRow = {
+  txId: string
+  loraTxUrl: string
+  loraGroupUrl?: string
+  group?: string
+  confirmedRound?: number
+  timestamp?: number
+  txType: string
+  sender: string
+  receiver?: string
+  amount?: number
+  appId?: number
+  onCompletion?: string
+  method?: string
+  selectorHex?: string
+  decodedArgs?: ReturnType<typeof decodeAppCallArgs>['args']
+  note?: ReturnType<typeof decodeArc69Note>
+  logs?: ReturnType<typeof decodeLogs>
+  innerTxns?: Array<{
+    txType: string
+    sender?: string
+    receiver?: string
+    amount?: number
+    assetId?: number
+    createdAssetId?: number
+  }>
+}
+
+const METHOD_REGISTRY: Record<string, { name: string; argTypes: Array<'uint64' | 'address' | 'byte[]' | 'txn_ref'> }> = {
+  [selectorHex(SELECTOR_OPT_IN)]: { name: 'opt_in()', argTypes: [] },
+  [selectorHex(SELECTOR_DEPOSIT)]: { name: 'deposit(pay)', argTypes: ['txn_ref'] },
+  [selectorHex(SELECTOR_CLAIM_BADGE)]: { name: 'claim_badge(uint64)', argTypes: ['uint64'] },
+  [selectorHex(SELECTOR_WITHDRAW)]: { name: 'withdraw(uint64,address)', argTypes: ['uint64', 'address'] },
+  [selectorHex(SELECTOR_WITHDRAW_LEGACY)]: { name: 'withdraw(uint64) [legacy]', argTypes: ['uint64'] },
+  [selectorHex(SELECTOR_SETUP_PACT)]: { name: 'setup_savings_pact(address,uint64,uint64,uint64)', argTypes: ['address', 'uint64', 'uint64', 'uint64'] },
+  [selectorHex(SELECTOR_APPLY_PACT_PENALTY)]: { name: 'apply_pact_penalty(address,pay)', argTypes: ['address', 'txn_ref'] },
+  [selectorHex(SELECTOR_SET_LOCK)]: { name: 'set_temptation_lock(uint64,uint64,address)', argTypes: ['uint64', 'uint64', 'address'] },
+  [selectorHex(SELECTOR_DISABLE_LOCK)]: { name: 'disable_temptation_lock()', argTypes: [] },
+  [selectorHex(SELECTOR_SET_DREAM)]: { name: 'set_dream_board(byte[],byte[])', argTypes: ['byte[]', 'byte[]'] },
+}
+
+export async function getProtocolTransactions(address: string, limit: number = 40): Promise<{
+  rows: ProtocolTxnRow[]
+  groups: Record<string, ProtocolTxnRow[]>
+}> {
+  const indexer = getIndexerClient()
+  const res = (await indexer.searchForTransactions().address(address).limit(Math.max(60, limit * 4)).do()) as any
+  const txns = (res?.transactions ?? []) as any[]
+
+  const rows: ProtocolTxnRow[] = txns.map((t: any) => {
+    const txId = String(t?.id ?? '')
+    const txType = String(t?.['tx-type'] ?? 'UNKNOWN')
+    const sender = String(t?.sender ?? '')
+    const group = typeof t?.group === 'string' ? t.group : undefined
+    const confirmedRound = typeof t?.['confirmed-round'] === 'number' ? t['confirmed-round'] : undefined
+    const timestamp = typeof t?.['round-time'] === 'number' ? t['round-time'] : undefined
+
+    const pay = t?.['payment-transaction']
+    const appl = t?.['application-transaction']
+    const receiver = typeof pay?.receiver === 'string' ? pay.receiver : undefined
+    const amount = typeof pay?.amount === 'number' ? pay.amount : undefined
+    const appId = typeof appl?.['application-id'] === 'number' ? appl['application-id'] : undefined
+    const onCompletion = appl?.['on-completion'] ? String(appl['on-completion']).toUpperCase() : undefined
+
+    const appArgs = Array.isArray(appl?.['application-args']) ? (appl['application-args'] as string[]) : undefined
+    const decoded = appArgs ? decodeAppCallArgs(appArgs, METHOD_REGISTRY) : undefined
+
+    const note = decodeArc69Note(t?.note) ?? undefined
+    const logs = decodeLogs(t?.logs) ?? undefined
+
+    const inner = (t?.['inner-txns'] ?? []) as any[]
+    const innerTxns = Array.isArray(inner)
+      ? inner.map((it: any) => ({
+          txType: String(it?.['tx-type'] ?? 'UNKNOWN'),
+          sender: typeof it?.sender === 'string' ? it.sender : undefined,
+          receiver: typeof it?.['payment-transaction']?.receiver === 'string' ? it['payment-transaction'].receiver : undefined,
+          amount: typeof it?.['payment-transaction']?.amount === 'number' ? it['payment-transaction'].amount : undefined,
+          assetId: typeof it?.['asset-config-transaction']?.['asset-id'] === 'number' ? it['asset-config-transaction']['asset-id'] : undefined,
+          createdAssetId: typeof it?.['created-asset-index'] === 'number' ? it['created-asset-index'] : undefined,
+        }))
+      : undefined
+
+    return {
+      txId,
+      loraTxUrl: getExplorerTransactionUrl(txId),
+      group,
+      loraGroupUrl: group ? getExplorerGroupUrl(group) : undefined,
+      confirmedRound,
+      timestamp,
+      txType,
+      sender,
+      receiver,
+      amount,
+      appId,
+      onCompletion,
+      method: decoded?.method,
+      selectorHex: decoded?.selectorHex,
+      decodedArgs: decoded?.args,
+      note,
+      logs,
+      innerTxns,
+    }
+  })
+
+  const filtered = rows
+    .filter((r) => r.txId.length > 0)
+    .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+    .slice(0, limit)
+
+  const groups: Record<string, ProtocolTxnRow[]> = {}
+  for (const r of filtered) {
+    if (!r.group) continue
+    groups[r.group] = groups[r.group] ?? []
+    groups[r.group].push(r)
+  }
+  for (const g of Object.keys(groups)) {
+    groups[g].sort((a, b) => (a.txType === 'pay' ? -1 : 1) - (b.txType === 'pay' ? -1 : 1))
+  }
+
+  return { rows: filtered, groups }
 }
 
 const BADGE_NAMES: Record<number, string> = {
@@ -436,6 +771,13 @@ export async function setupSavingsPact(
   const requiredMicro = Math.round(requiredAmountAlgo * 1_000_000)
   const penaltyMicro = Math.round(penaltyAmountAlgo * 1_000_000)
   const cadenceSeconds = Math.round(cadenceDays * 24 * 60 * 60)
+  const note = buildActionNote('pact_setup', {
+    user: address,
+    partner: partnerAddress,
+    required_micro: requiredMicro,
+    cadence_seconds: cadenceSeconds,
+    penalty_micro: penaltyMicro,
+  })
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
@@ -446,6 +788,7 @@ export async function setupSavingsPact(
       algosdk.encodeUint64(cadenceSeconds),
       algosdk.encodeUint64(penaltyMicro),
     ],
+    note,
     suggestedParams: sp,
   })
   const signed = await signTransactions([encodeTxnBytes(txn)])
@@ -467,10 +810,12 @@ export async function applyPactPenalty(
   const spBase = await getSuggestedParams()
   const amountMicro = Math.round(penaltyAmountAlgo * 1_000_000)
   const appAddr = getVaultAppAddress()
+  const note = buildActionNote('pact_penalty', { user: address, partner: partnerAddress, amount_micro: amountMicro })
   const payTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
     to: appAddr,
     amount: amountMicro,
+    note,
     suggestedParams: withFlatFee(spBase, FEE_PAY_PACT),
   })
   const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
@@ -478,6 +823,7 @@ export async function applyPactPenalty(
     appIndex: APP_ID,
     // ARC-4 txn arg: reference the payment txn by index (0)
     appArgs: [SELECTOR_APPLY_PACT_PENALTY, encodeAddressArg(partnerAddress), encodeTxnRefArg(0)],
+    note,
     suggestedParams: withFlatFee(spBase, FEE_APP_PACT),
   })
   return signAndSendGroup(signTransactions, [payTxn, appCallTxn])
@@ -495,6 +841,12 @@ export async function setTemptationLock(
   const spBase = await getSuggestedParams()
   const sp = withFlatFee(spBase, FEE_APP_STANDARD)
   const goalMicro = Math.round(goalAmountAlgo * 1_000_000)
+  const note = buildActionNote('lock_set', {
+    user: address,
+    goal_micro: goalMicro,
+    penalty_bps: penaltyBps,
+    penalty_sink: penaltySinkAddress,
+  })
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
@@ -504,6 +856,7 @@ export async function setTemptationLock(
       algosdk.encodeUint64(penaltyBps),
       encodeAddressArg(penaltySinkAddress),
     ],
+    note,
     suggestedParams: sp,
   })
   const signed = await signTransactions([encodeTxnBytes(txn)])
@@ -519,10 +872,12 @@ export async function disableTemptationLock(signTransactions: SignTransactionsFn
   if (mode !== 'full_pack') return requiresFullPack('Temptation Lock disable')
   const spBase = await getSuggestedParams()
   const sp = withFlatFee(spBase, FEE_APP_STANDARD)
+  const note = buildActionNote('lock_disable', { user: address })
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
     appArgs: [SELECTOR_DISABLE_LOCK],
+    note,
     suggestedParams: sp,
   })
   const signed = await signTransactions([encodeTxnBytes(txn)])
@@ -594,8 +949,7 @@ export async function getUserExtraState(address: string): Promise<{
   dreamUri: string
   dreamTitle: string
 }> {
-  const algod = getAlgodClient()
-  const info = (await algod.accountInformation(address).do()) as any
+  const info = (await getAccountInformationCached(address)) as any
   const local = (info['apps-local-state'] ?? []).find((a: any) => a.id === APP_ID)
   const kv = local?.['key-value'] ?? []
   const getEntry = (key: string) => kv.find((x: any) => x.key === btoa(key))?.value
@@ -768,8 +1122,7 @@ export async function getRecentDepositsSummary(address: string, count: number = 
 
 // Check if user opted in
 export async function isOptedIn(address: string): Promise<boolean> {
-  const algod = getAlgodClient()
-  const info = (await algod.accountInformation(address).do()) as any
+  const info = (await getAccountInformationCached(address)) as any
   const local = info?.['apps-local-state'] ?? []
   return local.some((a: any) => a.id === APP_ID)
 }

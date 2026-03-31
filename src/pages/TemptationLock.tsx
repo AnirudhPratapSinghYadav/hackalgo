@@ -12,23 +12,32 @@ const DESTINATIONS = [
 export default function TemptationLock() {
   const { activeAddress, signTransactions, wallets } = useWallet()
 
-  const [goalAlgo, setGoalAlgo] = useState('100')
-  const [penaltyPct, setPenaltyPct] = useState(10)
+  const [goalAlgo, setGoalAlgo] = useState('')
+  const [penaltyPct, setPenaltyPct] = useState<number | null>(null)
   const [destType, setDestType] = useState<string>('burn')
   const [customAddress, setCustomAddress] = useState('')
   const [status, setStatus] = useState('')
   const [txId, setTxId] = useState('')
   const [busy, setBusy] = useState(false)
   const [currentLock, setCurrentLock] = useState<{ lockEnabled: number; goalAmountMicro: number; penaltyBps: number; penaltySink: string } | null>(null)
+  const [loadingLock, setLoadingLock] = useState(false)
 
   useEffect(() => {
     if (!activeAddress) return
-    getUserExtraState(activeAddress).then((s) => {
-      setCurrentLock({ lockEnabled: s.lockEnabled, goalAmountMicro: s.goalAmountMicro, penaltyBps: s.penaltyBps, penaltySink: s.penaltySink })
-      if (s.penaltyBps > 0) setPenaltyPct(s.penaltyBps / 100)
-      if (s.goalAmountMicro > 0) setGoalAlgo(String(s.goalAmountMicro / 1_000_000))
-      if (s.penaltySink && s.penaltySink !== activeAddress) setCustomAddress(s.penaltySink)
-    }).catch(() => undefined)
+    setLoadingLock(true)
+    getUserExtraState(activeAddress)
+      .then((s) => {
+        setCurrentLock({ lockEnabled: s.lockEnabled, goalAmountMicro: s.goalAmountMicro, penaltyBps: s.penaltyBps, penaltySink: s.penaltySink })
+        if (s.penaltyBps > 0) setPenaltyPct(s.penaltyBps / 100)
+        if (s.goalAmountMicro > 0) setGoalAlgo(String(s.goalAmountMicro / 1_000_000))
+        if (s.penaltySink && s.penaltySink !== activeAddress) setCustomAddress(s.penaltySink)
+        if (s.penaltyBps === 0 && s.goalAmountMicro === 0) {
+          setPenaltyPct(null)
+          setGoalAlgo('')
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => setLoadingLock(false))
   }, [activeAddress])
 
   if (!activeAddress) return <Navigate to="/" replace />
@@ -45,6 +54,8 @@ export default function TemptationLock() {
   const onSaveLock = async () => {
     const sink = getSinkAddress()
     if (!sink || sink.length !== 58) { setStatus('Enter a valid penalty destination address'); return }
+    if (!goalAlgo || !Number.isFinite(Number(goalAlgo)) || Number(goalAlgo) <= 0) { setStatus('Enter a valid savings goal'); return }
+    if (penaltyPct === null || !Number.isFinite(Number(penaltyPct)) || Number(penaltyPct) <= 0) { setStatus('Select a penalty percentage'); return }
     setBusy(true); setStatus('Waiting for wallet...')
     try {
       const bps = Math.round(penaltyPct * 100)
@@ -64,6 +75,7 @@ export default function TemptationLock() {
   }
 
   const lockActive = currentLock?.lockEnabled === 1
+  const pct = penaltyPct ?? 0
 
   return (
     <div className="min-h-screen bg-[#f8f9fb] font-sans">
@@ -115,7 +127,15 @@ export default function TemptationLock() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Savings Goal</label>
                 <div className="relative">
-                  <input type="number" min="1" step="1" className="w-full rounded-xl border border-gray-200 px-5 py-4 text-3xl font-bold text-gray-900 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all bg-gray-50/50 pr-20" value={goalAlgo} onChange={(e) => setGoalAlgo(e.target.value)} />
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    className="w-full rounded-xl border border-gray-200 px-5 py-4 text-3xl font-bold text-gray-900 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all bg-gray-50/50 pr-20"
+                    value={goalAlgo}
+                    onChange={(e) => setGoalAlgo(e.target.value)}
+                    placeholder={loadingLock ? 'Loading on-chain lock…' : 'Enter goal amount'}
+                  />
                   <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-semibold text-gray-400">ALGO</span>
                 </div>
               </div>
@@ -124,12 +144,21 @@ export default function TemptationLock() {
                 <label className="block text-sm font-semibold text-gray-700 mb-3">Early Withdrawal Penalty</label>
                 <div className="bg-gradient-to-r from-green-50 via-yellow-50 to-red-50 rounded-xl p-5 border border-gray-100">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-4xl font-bold text-gray-900">{penaltyPct}%</span>
-                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${penaltyPct <= 5 ? 'bg-green-100 text-green-700' : penaltyPct <= 20 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                      {penaltyPct <= 5 ? 'Gentle' : penaltyPct <= 20 ? 'Moderate' : 'Aggressive'}
+                    <span className="text-4xl font-bold text-gray-900">{penaltyPct === null ? '—' : `${penaltyPct}%`}</span>
+                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${pct <= 5 ? 'bg-green-100 text-green-700' : pct <= 20 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                      {penaltyPct === null ? 'Not set' : pct <= 5 ? 'Gentle' : pct <= 20 ? 'Moderate' : 'Aggressive'}
                     </span>
                   </div>
-                  <input type="range" min="1" max="50" step="1" value={penaltyPct} onChange={(e) => setPenaltyPct(Number(e.target.value))} className="w-full h-2 rounded-full appearance-none cursor-pointer accent-orange-500" style={{ background: `linear-gradient(to right, #22c55e ${(penaltyPct / 50) * 30}%, #eab308 ${(penaltyPct / 50) * 60}%, #ef4444 ${(penaltyPct / 50) * 100}%)` }} />
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    step="1"
+                    value={pct}
+                    onChange={(e) => setPenaltyPct(Number(e.target.value))}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer accent-orange-500"
+                    style={{ background: `linear-gradient(to right, #22c55e ${(pct / 50) * 30}%, #eab308 ${(pct / 50) * 60}%, #ef4444 ${(pct / 50) * 100}%)` }}
+                  />
                   <div className="flex justify-between text-[10px] text-gray-400 mt-2 font-semibold"><span>1%</span><span>25%</span><span>50%</span></div>
                 </div>
               </div>

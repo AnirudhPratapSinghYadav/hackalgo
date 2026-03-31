@@ -8,6 +8,7 @@ import SavingsPact from './pages/SavingsPact';
 import TemptationLock from './pages/TemptationLock';
 import DreamBoard from './pages/DreamBoard';
 import WeeklySavingsReport from './report/WeeklySavingsReport';
+import ProtocolExplorer from './pages/ProtocolExplorer';
 
 function App() {
   const { activeAddress } = useWallet();
@@ -23,6 +24,7 @@ function App() {
         <Route path="/temptation-lock" element={activeAddress ? <TemptationLock /> : <Navigate to="/" replace />} />
         <Route path="/dream-board" element={activeAddress ? <DreamBoard /> : <Navigate to="/" replace />} />
         <Route path="/report" element={activeAddress ? <WeeklySavingsReport /> : <Navigate to="/" replace />} />
+        <Route path="/protocol" element={activeAddress ? <ProtocolExplorer /> : <Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

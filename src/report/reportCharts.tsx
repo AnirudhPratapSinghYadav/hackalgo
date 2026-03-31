@@ -99,11 +99,19 @@ export function ActivityGrid({ buckets }: ChartProps) {
   )
 }
 
-export function MilestoneProgress({ milestone, totalSaved }: { milestone: number; totalSaved: number }) {
+export function MilestoneProgress({
+  milestone,
+  totalSaved,
+  milestonesAlgo,
+}: {
+  milestone: number
+  totalSaved: number
+  milestonesAlgo: { m1: number; m2: number; m3: number }
+}) {
   const milestones = [
-    { level: 1, name: 'Vault Starter', threshold: 10 },
-    { level: 2, name: 'Vault Builder', threshold: 50 },
-    { level: 3, name: 'Vault Master', threshold: 100 },
+    { level: 1, name: 'Vault Starter', threshold: milestonesAlgo.m1 },
+    { level: 2, name: 'Vault Builder', threshold: milestonesAlgo.m2 },
+    { level: 3, name: 'Vault Master', threshold: milestonesAlgo.m3 },
   ]
 
   return (

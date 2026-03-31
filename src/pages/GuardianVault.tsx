@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '@txnlab/use-wallet-react'
 import {
@@ -26,9 +26,12 @@ export default function GuardianVault() {
   const [balance, setBalance] = useState('...')
   const [userStats, setUserStats] = useState({ totalSaved: 0, milestone: 0, streak: 0, lastDeposit: 0 })
   const [globalStats, setGlobalStats] = useState({ totalDeposited: 0, totalUsers: 0 })
+  const [milestones, setMilestones] = useState<{ m1: number; m2: number; m3: number } | null>(null)
+  const [milestoneError, setMilestoneError] = useState<string | null>(null)
   const [extraState, setExtraState] = useState({ lockEnabled: 0, goalAmountMicro: 0, penaltyBps: 0, penaltySink: '', dreamUri: '', dreamTitle: '' })
   const [optedIn, setOptedIn] = useState<boolean | null>(null)
   const [optingIn, setOptingIn] = useState(false)
+  const [optInError, setOptInError] = useState<string | null>(null)
 
   // Contribution form
   const [depositAmount, setDepositAmount] = useState('')
@@ -49,18 +52,27 @@ export default function GuardianVault() {
 
   const refreshData = useCallback(async () => {
     if (!activeAddress) return
-    const [bal, stats, global, opted] = await Promise.all([
+    const [bal, stats, opted] = await Promise.all([
       getBalance(activeAddress),
       getUserStats(activeAddress).catch(() => ({ totalSaved: 0, milestone: 0, streak: 0, lastDeposit: 0 })),
-      getGlobalStats().catch(() => ({ totalDeposited: 0, totalUsers: 0 })),
       isOptedIn(activeAddress).catch(() => false),
     ])
     setBalance(bal)
     setUserStats(stats)
-    setGlobalStats(global)
     setOptedIn(opted)
 
     getUserExtraState(activeAddress).then(setExtraState).catch(() => {})
+
+    try {
+      const global = await getGlobalStats()
+      setGlobalStats({ totalDeposited: global.totalDeposited, totalUsers: global.totalUsers })
+      setMilestones(global.milestones)
+      setMilestoneError(null)
+    } catch (e: any) {
+      setMilestoneError(e?.message ?? 'Failed to load milestone thresholds from on-chain global state.')
+      setMilestones(null)
+      setGlobalStats({ totalDeposited: 0, totalUsers: 0 })
+    }
   }, [activeAddress])
 
   useEffect(() => { refreshData() }, [refreshData])
@@ -71,17 +83,27 @@ export default function GuardianVault() {
   const truncated = `${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}`
   const savedAlgo = userStats.totalSaved / 1_000_000
   const globalAlgo = globalStats.totalDeposited / 1_000_000
+  const milestonesAlgo = milestones ? [milestones.m1, milestones.m2, milestones.m3].map((m) => m / 1_000_000) : null
+  const journeyMilestones = useMemo(() => {
+    if (!milestonesAlgo) return null
+    return [
+      { label: 'Vault Starter', threshold: milestonesAlgo[0], icon: '🥉' },
+      { label: 'Vault Builder', threshold: milestonesAlgo[1], icon: '🥈' },
+      { label: 'Vault Master', threshold: milestonesAlgo[2], icon: '🥇' },
+    ]
+  }, [milestonesAlgo?.[0], milestonesAlgo?.[1], milestonesAlgo?.[2]])
   const goalAlgo = extraState.goalAmountMicro / 1_000_000
   const goalProgressPct = goalAlgo > 0 ? Math.min(100, (savedAlgo / goalAlgo) * 100) : 0
 
   const handleOptIn = async () => {
     setOptingIn(true)
+    setOptInError(null)
     try {
       await optInToVault(signTransactions, activeAddress)
       setOptedIn(true)
       refreshData()
     } catch (e: any) {
-      alert(e?.message || 'Opt-in failed')
+      setOptInError(e?.message || 'Opt-in failed')
     } finally {
       setOptingIn(false)
     }
@@ -178,7 +200,14 @@ export default function GuardianVault() {
       <div className="mx-auto max-w-6xl px-5 sm:px-6 py-8 space-y-6 pb-28">
         {/* OPT-IN BANNER */}
         {optedIn === false && (
-          <div className="flex flex-col sm:flex-row items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl px-6 py-5 gap-4">
+          <div className="flex flex-col bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl px-6 py-5 gap-3">
+            {optInError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-sm font-semibold text-red-700">Opt-in failed</p>
+                <p className="text-xs text-red-600 mt-1 break-words">{optInError}</p>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -191,11 +220,29 @@ export default function GuardianVault() {
             <button onClick={handleOptIn} disabled={optingIn} className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all shadow-sm whitespace-nowrap">
               {optingIn ? 'Opting in...' : 'Opt In Now'}
             </button>
+            </div>
           </div>
         )}
 
         {/* PROGRESS JOURNEY */}
-        <ProgressJourney savedAlgo={savedAlgo} currentMilestone={userStats.milestone} variant="guardian" />
+        {milestoneError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+            <p className="text-sm font-semibold text-red-700">Milestone thresholds unavailable</p>
+            <p className="text-xs text-red-600 mt-1">{milestoneError}</p>
+          </div>
+        ) : !milestonesAlgo ? (
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+            <p className="text-sm font-semibold text-gray-700">Loading milestone thresholds from on-chain global state…</p>
+            <p className="text-xs text-gray-500 mt-1">This app does not use hardcoded milestone values.</p>
+          </div>
+        ) : (
+          <ProgressJourney
+            savedAlgo={savedAlgo}
+            currentMilestone={userStats.milestone}
+            variant="guardian"
+            milestones={journeyMilestones!}
+          />
+        )}
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* LEFT COLUMN */}
@@ -374,7 +421,10 @@ export default function GuardianVault() {
         totalSaved={savedAlgo}
         streak={userStats.streak}
         milestone={userStats.milestone}
+        milestonesAlgo={milestonesAlgo ? { m1: milestonesAlgo[0], m2: milestonesAlgo[1], m3: milestonesAlgo[2] } : null}
         onOpenDeposit={() => {}}
+        onOpenPact={() => navigate('/pact')}
+        onOpenLock={() => navigate('/temptation-lock')}
       />
     </div>
   )

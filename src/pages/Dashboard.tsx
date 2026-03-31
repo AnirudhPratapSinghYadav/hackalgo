@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useWallet } from '@txnlab/use-wallet-react'
 import {
@@ -17,14 +17,11 @@ import AIChatbot from '../components/AIChatbot'
 import { generateVaultSummary, type VaultSummaryType } from '../services/aiService'
 import { getContractMode } from '../services/algorand'
 
-const MILESTONES = [
-  { level: 1, name: 'Vault Starter', threshold: 10 },
-  { level: 2, name: 'Vault Builder', threshold: 50 },
-  { level: 3, name: 'Vault Master', threshold: 100 },
-]
-
-function badgeName(level: number) {
-  return MILESTONES.find((m) => m.level === level)?.name ?? 'None'
+const BADGE_LEVEL_NAME: Record<number, string> = {
+  0: 'Not earned',
+  1: 'Vault Starter',
+  2: 'Vault Builder',
+  3: 'Vault Master',
 }
 
 export default function Dashboard() {
@@ -32,8 +29,11 @@ export default function Dashboard() {
   const navigate = useNavigate()
 
   const [balance, setBalance] = useState('...')
+  const [dataLoading, setDataLoading] = useState(true)
   const [userStats, setUserStats] = useState({ totalSaved: 0, milestone: 0, streak: 0, lastDeposit: 0 })
   const [globalStats, setGlobalStats] = useState({ totalDeposited: 0, totalUsers: 0 })
+  const [milestones, setMilestones] = useState<{ m1: number; m2: number; m3: number } | null>(null)
+  const [milestoneError, setMilestoneError] = useState<string | null>(null)
   const [optedIn, setOptedIn] = useState<boolean | null>(null)
   const [optingIn, setOptingIn] = useState(false)
   const [showDeposit, setShowDeposit] = useState(false)
@@ -44,21 +44,32 @@ export default function Dashboard() {
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [mode, setMode] = useState<'legacy_minimal' | 'full_pack' | null>(null)
+  const [optInError, setOptInError] = useState<string | null>(null)
 
   const activeWallet = wallets?.find((w) => w.isActive) ?? wallets?.find((w) => w.isConnected)
 
   const refreshData = useCallback(async () => {
     if (!activeAddress) return
-    const [bal, stats, global, opted] = await Promise.all([
-      getBalance(activeAddress),
-      getUserStats(activeAddress).catch(() => ({ totalSaved: 0, milestone: 0, streak: 0, lastDeposit: 0 })),
-      getGlobalStats().catch(() => ({ totalDeposited: 0, totalUsers: 0 })),
-      isOptedIn(activeAddress).catch(() => false),
-    ])
-    setBalance(bal)
-    setUserStats(stats)
-    setGlobalStats(global)
-    setOptedIn(opted)
+    setDataLoading(true)
+    try {
+      const [bal, stats, opted, global] = await Promise.all([
+        getBalance(activeAddress),
+        getUserStats(activeAddress),
+        isOptedIn(activeAddress),
+        getGlobalStats(),
+      ])
+      setBalance(bal)
+      setUserStats(stats)
+      setOptedIn(opted)
+      setGlobalStats({ totalDeposited: global.totalDeposited, totalUsers: global.totalUsers })
+      setMilestones(global.milestones)
+      setMilestoneError(null)
+    } catch (e: any) {
+      setMilestoneError(e?.message ?? 'Failed to load on-chain state.')
+      setMilestones(null)
+    } finally {
+      setDataLoading(false)
+    }
   }, [activeAddress])
 
   useEffect(() => {
@@ -79,6 +90,15 @@ export default function Dashboard() {
 
   const savedAlgo = userStats.totalSaved / 1_000_000
   const globalAlgo = globalStats.totalDeposited / 1_000_000
+  const milestonesAlgo = milestones ? [milestones.m1, milestones.m2, milestones.m3].map((m) => m / 1_000_000) : null
+  const journeyMilestones = useMemo(() => {
+    if (!milestonesAlgo) return null
+    return [
+      { label: 'Vault Starter', threshold: milestonesAlgo[0], icon: '🥉' },
+      { label: 'Vault Builder', threshold: milestonesAlgo[1], icon: '🥈' },
+      { label: 'Vault Master', threshold: milestonesAlgo[2], icon: '🥇' },
+    ]
+  }, [milestonesAlgo?.[0], milestonesAlgo?.[1], milestonesAlgo?.[2]])
   const questSteps = [
     { label: 'Connect wallet', done: !!activeAddress },
     { label: 'Opt in to vault', done: optedIn === true },
@@ -104,6 +124,7 @@ export default function Dashboard() {
         recentDeposits,
         globalDeposited: globalAlgo,
         globalContributors: globalStats.totalUsers,
+        milestones: milestonesAlgo ? { m1Algo: milestonesAlgo[0], m2Algo: milestonesAlgo[1], m3Algo: milestonesAlgo[2] } : undefined,
       })
       setSummaryText(text)
     } catch (e: any) {
@@ -116,13 +137,14 @@ export default function Dashboard() {
   const handleOptIn = async () => {
     if (!activeAddress) return
     setOptingIn(true)
+    setOptInError(null)
     try {
       await optInToVault(signTransactions, activeAddress)
       setOptedIn(true)
       refreshData()
     } catch (e: any) {
       console.error('Opt-in failed:', e)
-      alert(e?.message || 'Opt-in failed. Please try again.')
+      setOptInError(e?.message || 'Opt-in failed. Please try again.')
     } finally {
       setOptingIn(false)
     }
@@ -131,7 +153,7 @@ export default function Dashboard() {
   const STAT_CARDS = [
     {
       label: 'Your Savings',
-      value: savedAlgo.toFixed(2),
+      value: dataLoading ? '—' : savedAlgo.toFixed(2),
       unit: 'ALGO',
       sub: 'Personal vault balance',
       gradient: 'from-blue-500 to-blue-600',
@@ -143,9 +165,9 @@ export default function Dashboard() {
     },
     {
       label: 'Global Vault',
-      value: globalAlgo.toFixed(2),
+      value: dataLoading ? '—' : globalAlgo.toFixed(2),
       unit: 'ALGO',
-      sub: `${globalStats.totalUsers} total contributors`,
+      sub: dataLoading ? 'Loading contributors…' : `${globalStats.totalUsers} total contributors`,
       gradient: 'from-emerald-500 to-green-600',
       bgLight: 'bg-emerald-50',
       iconColor: 'text-emerald-500',
@@ -155,7 +177,7 @@ export default function Dashboard() {
     },
     {
       label: 'Your Streak',
-      value: String(userStats.streak),
+      value: dataLoading ? '—' : String(userStats.streak),
       unit: 'days',
       sub: 'Consecutive deposits',
       gradient: 'from-orange-400 to-orange-500',
@@ -167,9 +189,9 @@ export default function Dashboard() {
     },
     {
       label: 'Milestone',
-      value: `${userStats.milestone}`,
+      value: dataLoading ? '—' : `${userStats.milestone}`,
       unit: '/ 3',
-      sub: badgeName(userStats.milestone),
+      sub: dataLoading ? 'Loading milestone…' : (BADGE_LEVEL_NAME[userStats.milestone] ?? 'Not earned'),
       gradient: 'from-violet-500 to-purple-600',
       bgLight: 'bg-violet-50',
       iconColor: 'text-violet-500',
@@ -256,7 +278,14 @@ export default function Dashboard() {
       <div className="mx-auto max-w-6xl px-5 sm:px-6 py-8 pb-28 space-y-8">
         {/* OPT-IN BANNER */}
         {optedIn === false && (
-          <div className="flex flex-col sm:flex-row items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl px-6 py-5 gap-4 card-shadow">
+          <div className="flex flex-col bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl px-6 py-5 gap-3 card-shadow">
+            {optInError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-sm font-semibold text-red-700">Opt-in failed</p>
+                <p className="text-xs text-red-600 mt-1 break-words">{optInError}</p>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -273,6 +302,7 @@ export default function Dashboard() {
             >
               {optingIn ? 'Opting in...' : 'Opt In Now'}
             </button>
+            </div>
           </div>
         )}
 
@@ -353,11 +383,24 @@ export default function Dashboard() {
         </div>
 
         {/* PROGRESS JOURNEY ENGINE */}
-        <ProgressJourney
-          savedAlgo={savedAlgo}
-          currentMilestone={userStats.milestone}
-          variant="personal"
-        />
+        {milestoneError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+            <p className="text-sm font-semibold text-red-700">Milestone thresholds unavailable</p>
+            <p className="text-xs text-red-600 mt-1">{milestoneError}</p>
+          </div>
+        ) : !milestonesAlgo ? (
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+            <p className="text-sm font-semibold text-gray-700">Loading milestone thresholds from on-chain global state…</p>
+            <p className="text-xs text-gray-500 mt-1">This app does not use hardcoded milestone values.</p>
+          </div>
+        ) : (
+          <ProgressJourney
+            savedAlgo={savedAlgo}
+            currentMilestone={userStats.milestone}
+            variant="personal"
+            milestones={journeyMilestones!}
+          />
+        )}
 
         {/* SAVINGS QUEST */}
         <div className="rounded-2xl border border-gray-100 p-5 bg-white card-shadow">
@@ -385,11 +428,24 @@ export default function Dashboard() {
         </div>
 
         {/* MILESTONE BADGES */}
-        <MilestoneCards
-          savedAlgo={savedAlgo}
-          currentMilestone={userStats.milestone}
-          onBadgeClaimed={refreshData}
-        />
+        {milestoneError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+            <p className="text-sm font-semibold text-red-700">Milestone thresholds unavailable</p>
+            <p className="text-xs text-red-600 mt-1">{milestoneError}</p>
+          </div>
+        ) : !milestonesAlgo ? (
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+            <p className="text-sm font-semibold text-gray-700">Loading milestones…</p>
+            <p className="text-xs text-gray-500 mt-1">Badge unlock thresholds are read from global state.</p>
+          </div>
+        ) : (
+          <MilestoneCards
+            savedAlgo={savedAlgo}
+            currentMilestone={userStats.milestone}
+            onBadgeClaimed={refreshData}
+            milestonesAlgo={{ m1: milestonesAlgo[0], m2: milestonesAlgo[1], m3: milestonesAlgo[2] }}
+          />
+        )}
 
         {/* DEPOSIT + WITHDRAW BUTTONS */}
         <div className="flex items-center gap-4">
@@ -447,19 +503,35 @@ export default function Dashboard() {
         </div>
 
         {/* SAVINGS REPORT LINK */}
-        <button
-          onClick={() => navigate('/report')}
-          className="w-full rounded-2xl border border-gray-100 bg-white p-5 card-shadow hover:card-shadow-hover transition-all flex items-center gap-4 text-left group"
-        >
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#111827] to-[#1e3a5f] flex items-center justify-center flex-shrink-0">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-          </div>
-          <div className="flex-1">
-            <p className="text-base font-bold text-gray-900">Live Savings Report</p>
-            <p className="text-xs text-gray-500 mt-0.5">Charts, analytics, downloadable PDF, and WhatsApp share — all from live chain data</p>
-          </div>
-          <svg className="w-5 h-5 text-gray-300 group-hover:text-[#2563EB] group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-        </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            onClick={() => navigate('/report')}
+            className="w-full rounded-2xl border border-gray-100 bg-white p-5 card-shadow hover:card-shadow-hover transition-all flex items-center gap-4 text-left group"
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#111827] to-[#1e3a5f] flex items-center justify-center flex-shrink-0">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-base font-bold text-gray-900">Live Savings Report</p>
+              <p className="text-xs text-gray-500 mt-0.5">Charts, analytics, PDF, WhatsApp share — all from live chain data</p>
+            </div>
+            <svg className="w-5 h-5 text-gray-300 group-hover:text-[#2563EB] group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </button>
+
+          <button
+            onClick={() => navigate('/protocol')}
+            className="w-full rounded-2xl border border-gray-100 bg-white p-5 card-shadow hover:card-shadow-hover transition-all flex items-center gap-4 text-left group"
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0b1220] to-[#0f3d6b] flex items-center justify-center flex-shrink-0">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4V7M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-base font-bold text-gray-900">Protocol Explorer</p>
+              <p className="text-xs text-gray-500 mt-0.5">Decode ABI args, state, groups, inner txns, logs — with Lora proof</p>
+            </div>
+            <svg className="w-5 h-5 text-gray-300 group-hover:text-[#2563EB] group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
 
         {/* TRANSACTION HISTORY */}
         {activeAddress && <TransactionHistory address={activeAddress} />}
@@ -473,6 +545,7 @@ export default function Dashboard() {
       {showDeposit && (
         <DepositForm
           currentSavedAlgo={savedAlgo}
+          milestonesAlgo={milestonesAlgo ? { m1: milestonesAlgo[0], m2: milestonesAlgo[1], m3: milestonesAlgo[2] } : null}
           onClose={() => setShowDeposit(false)}
           onSuccess={() => { setShowDeposit(false); refreshData() }}
         />
@@ -491,7 +564,14 @@ export default function Dashboard() {
         totalSaved={savedAlgo}
         streak={userStats.streak}
         milestone={userStats.milestone}
+        milestonesAlgo={milestonesAlgo ? { m1: milestonesAlgo[0], m2: milestonesAlgo[1], m3: milestonesAlgo[2] } : null}
         onOpenDeposit={() => setShowDeposit(true)}
+        onOpenPact={() => navigate('/pact')}
+        onOpenLock={() => navigate('/temptation-lock')}
+        onOpenBadgeVault={() => {
+          // Badge Vault is opened inside MilestoneCards; keep UX consistent by scrolling user there.
+          document.querySelector('[data-badge-vault-anchor="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }}
       />
 
       {summaryOpen && (

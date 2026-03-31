@@ -7,7 +7,11 @@ interface Props {
   totalSaved: number
   streak: number
   milestone: number
+  milestonesAlgo: { m1: number; m2: number; m3: number } | null
   onOpenDeposit: () => void
+  onOpenPact?: () => void
+  onOpenLock?: () => void
+  onOpenBadgeVault?: () => void
 }
 
 const SUGGESTIONS = [
@@ -19,7 +23,17 @@ const SUGGESTIONS = [
   'What is my streak?',
 ]
 
-export default function AIChatbot({ address, totalSaved, streak, milestone, onOpenDeposit }: Props) {
+export default function AIChatbot({
+  address,
+  totalSaved,
+  streak,
+  milestone,
+  milestonesAlgo,
+  onOpenDeposit,
+  onOpenPact,
+  onOpenLock,
+  onOpenBadgeVault,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -30,13 +44,20 @@ export default function AIChatbot({ address, totalSaved, streak, milestone, onOp
     recentDeposits: 'loading...',
     globalDeposited: undefined,
     globalContributors: undefined,
+    milestones: milestonesAlgo ? { m1Algo: milestonesAlgo.m1, m2Algo: milestonesAlgo.m2, m3Algo: milestonesAlgo.m3 } : undefined,
   })
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setCtx((prev) => ({ ...prev, totalSaved, streak, milestone }))
-  }, [totalSaved, streak, milestone])
+    setCtx((prev) => ({
+      ...prev,
+      totalSaved,
+      streak,
+      milestone,
+      milestones: milestonesAlgo ? { m1Algo: milestonesAlgo.m1, m2Algo: milestonesAlgo.m2, m3Algo: milestonesAlgo.m3 } : prev.milestones,
+    }))
+  }, [totalSaved, streak, milestone, milestonesAlgo])
 
   useEffect(() => {
     if (!address) return
@@ -167,6 +188,21 @@ export default function AIChatbot({ address, totalSaved, streak, milestone, onOp
                   <button onClick={() => { setOpen(false); onOpenDeposit() }} className="text-[10px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 font-semibold border border-blue-100 hover:bg-blue-100 transition-all">
                     Deposit ALGO
                   </button>
+                  {onOpenPact && (
+                    <button onClick={() => { setOpen(false); onOpenPact() }} className="text-[10px] px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 font-semibold border border-violet-100 hover:bg-violet-100 transition-all">
+                      Create pact
+                    </button>
+                  )}
+                  {onOpenLock && (
+                    <button onClick={() => { setOpen(false); onOpenLock() }} className="text-[10px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 font-semibold border border-orange-100 hover:bg-orange-100 transition-all">
+                      Set lock
+                    </button>
+                  )}
+                  {onOpenBadgeVault && (
+                    <button onClick={() => { setOpen(false); onOpenBadgeVault() }} className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100 hover:bg-emerald-100 transition-all">
+                      Badge vault
+                    </button>
+                  )}
                 </div>
               </div>
             )}

@@ -13,7 +13,7 @@ export default function DreamBoard() {
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState<{ title: string; uri: string } | null>(null)
   const [savedAlgo, setSavedAlgo] = useState(0)
-  const [goalAlgo, setGoalAlgo] = useState(100)
+  const [goalAlgo, setGoalAlgo] = useState<number | null>(null)
 
   useEffect(() => {
     if (!activeAddress) return
@@ -24,6 +24,7 @@ export default function DreamBoard() {
         setDreamUri(state.dreamUri)
       }
       if (state.goalAmountMicro > 0) setGoalAlgo(state.goalAmountMicro / 1_000_000)
+      else setGoalAlgo(null)
     }).catch(() => undefined)
     getUserStats(activeAddress).then((s) => setSavedAlgo(s.totalSaved / 1_000_000)).catch(() => undefined)
   }, [activeAddress])
@@ -33,7 +34,7 @@ export default function DreamBoard() {
   const truncated = `${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}`
   const disconnect = () => { wallets?.forEach((w) => { if (w.isConnected) w.disconnect() }) }
 
-  const progress = Math.min(100, (savedAlgo / Math.max(goalAlgo, 1)) * 100)
+  const progress = goalAlgo && goalAlgo > 0 ? Math.min(100, (savedAlgo / goalAlgo) * 100) : 0
   const blurPx = Math.max(0, 24 - (progress / 100) * 24)
   const previewUri = dreamUri || saved?.uri
 
@@ -106,7 +107,10 @@ export default function DreamBoard() {
               </div>
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm border border-gray-100">
                 <div className="flex justify-between"><span className="text-gray-500">Currently saved</span><span className="font-bold text-gray-900">{savedAlgo.toFixed(2)} ALGO</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Goal (from lock)</span><span className="font-bold text-gray-900">{goalAlgo.toFixed(0)} ALGO</span></div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Goal (from lock)</span>
+                  <span className="font-bold text-gray-900">{goalAlgo ? `${goalAlgo.toFixed(0)} ALGO` : 'Waiting for on-chain goal…'}</span>
+                </div>
                 <div className="flex justify-between"><span className="text-gray-500">Image clarity</span><span className="font-bold text-cyan-600">{progress.toFixed(0)}%</span></div>
               </div>
               <button onClick={onSaveDream} disabled={busy} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-semibold text-sm disabled:opacity-50 shadow-md shadow-cyan-500/20 transition-all">
@@ -143,7 +147,7 @@ export default function DreamBoard() {
                     </div>
                     <div className="bg-black/40 backdrop-blur-sm px-5 py-3 flex items-center justify-between">
                       <span className="text-white font-semibold text-sm">{dreamTitle || saved?.title || 'Your Dream'}</span>
-                      <span className="text-white/60 text-xs">{savedAlgo.toFixed(2)} / {goalAlgo.toFixed(0)} ALGO</span>
+                      <span className="text-white/60 text-xs">{savedAlgo.toFixed(2)} / {goalAlgo ? goalAlgo.toFixed(0) : '—'} ALGO</span>
                     </div>
                   </div>
                 </div>

@@ -200,7 +200,7 @@ export default function WeeklySavingsReport() {
                     <ActivityGrid buckets={data.dailyBuckets} />
                   </div>
                   <h3 className="font-bold text-gray-900 text-base mb-4">Milestone Progress</h3>
-                  <MilestoneProgress milestone={data.milestone} totalSaved={data.totalSaved} />
+                  <MilestoneProgress milestone={data.milestone} totalSaved={data.totalSaved} milestonesAlgo={data.milestonesAlgo} />
                 </div>
               </div>
             </div>

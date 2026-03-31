@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { getTransactionHistory } from '../services/algorand'
 
 interface Props {
@@ -36,7 +36,7 @@ function txStyle(action: string, type: string) {
   return TX_STYLES[action] ?? TX_STYLES[type] ?? { label: action || type.toUpperCase(), bg: 'bg-gray-50', text: 'text-gray-600' }
 }
 
-export default function TransactionHistory({ address }: Props) {
+function TransactionHistory({ address }: Props) {
   const [txns, setTxns] = useState<Txn[]>([])
   const [loading, setLoading] = useState(true)
   const [openGroup, setOpenGroup] = useState<string | null>(null)
@@ -50,7 +50,9 @@ export default function TransactionHistory({ address }: Props) {
   }, [address])
 
   useEffect(() => {
-    fetchHistory()
+    // Defer indexer call so the first paint is instant.
+    const t = window.setTimeout(() => fetchHistory(), 350)
+    return () => window.clearTimeout(t)
   }, [fetchHistory])
 
   return (
@@ -197,3 +199,5 @@ export default function TransactionHistory({ address }: Props) {
     </div>
   )
 }
+
+export default memo(TransactionHistory, (prev, next) => prev.address === next.address)

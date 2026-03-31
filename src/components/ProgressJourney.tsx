@@ -4,29 +4,25 @@ interface Milestone {
   icon: string
 }
 
+import { memo } from 'react'
+
 interface Props {
   savedAlgo: number
-  milestones?: Milestone[]
+  milestones: Milestone[]
   currentMilestone?: number
   compact?: boolean
   variant?: 'personal' | 'guardian' | 'community'
 }
 
-const DEFAULT_MILESTONES: Milestone[] = [
-  { label: 'Vault Starter', threshold: 10, icon: '\u{1F949}' },
-  { label: 'Vault Builder', threshold: 50, icon: '\u{1F948}' },
-  { label: 'Vault Master', threshold: 100, icon: '\u{1F947}' },
-]
-
-export default function ProgressJourney({
+function ProgressJourney({
   savedAlgo,
-  milestones = DEFAULT_MILESTONES,
+  milestones,
   currentMilestone = 0,
   compact = false,
   variant = 'personal',
 }: Props) {
-  const maxThreshold = milestones[milestones.length - 1]?.threshold ?? 100
-  const progressPct = Math.min(100, (savedAlgo / maxThreshold) * 100)
+  const maxThreshold = milestones[milestones.length - 1]?.threshold ?? 0
+  const progressPct = maxThreshold > 0 ? Math.min(100, (savedAlgo / maxThreshold) * 100) : 0
   const isActive = savedAlgo > 0
   const isComplete = progressPct >= 100
   const nearMilestone = !isComplete && milestones.some((m) => savedAlgo < m.threshold && savedAlgo >= m.threshold * 0.9)
@@ -232,6 +228,16 @@ export default function ProgressJourney({
     </div>
   )
 }
+
+export default memo(
+  ProgressJourney,
+  (prev, next) =>
+    prev.savedAlgo === next.savedAlgo &&
+    prev.currentMilestone === next.currentMilestone &&
+    prev.compact === next.compact &&
+    prev.variant === next.variant &&
+    prev.milestones === next.milestones,
+)
 
 function RoadCharacter({ state }: { state: 'idle' | 'walk' | 'near' | 'complete' }) {
   const face =
