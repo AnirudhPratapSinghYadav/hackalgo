@@ -12,6 +12,7 @@ import DepositForm from '../components/DepositForm'
 import WithdrawForm from '../components/WithdrawForm'
 import TransactionHistory from '../components/TransactionHistory'
 import MilestoneCards from '../components/MilestoneCard'
+import SavingsCoach from '../components/SavingsCoach'
 
 const VAULT_TYPES = [
   { id: 'personal', icon: '\u{1F3E6}', name: 'Personal Savings', desc: 'Build your wealth' },
@@ -237,6 +238,14 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+
+        {/* AI SAVINGS COACH */}
+        <SavingsCoach
+          totalSaved={savedAlgo}
+          streak={userStats.streak}
+          milestone={userStats.milestone}
+          vaultType={vaultType}
+        />
 
         {/* PROGRESS SECTION */}
         <div className="rounded-2xl border border-gray-100 p-6 bg-white card-shadow">
