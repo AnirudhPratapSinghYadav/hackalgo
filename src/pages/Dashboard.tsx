@@ -210,7 +210,7 @@ export default function Dashboard() {
 
         {/* VAULT TYPE SELECTOR */}
         <div>
-          <h2 className="text-gray-900 font-bold text-lg mb-3 tracking-tight">Choose Your Vault Strategy</h2>
+          <h2 className="text-gray-900 font-bold text-lg mb-3 tracking-tight">Vault Strategy</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {VAULT_TYPES.map((v) => {
               const selected = vaultType === v.id
@@ -237,12 +237,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* PACK A — WINNING FEATURES */}
+        {/* SMART MODULES */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-gray-900 font-bold text-lg tracking-tight">Blockchain-Powered Features</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Real on-chain smart contract modules — not simulations</p>
+              <h2 className="text-gray-900 font-bold text-lg tracking-tight">Smart Vault Modules</h2>
+              <p className="text-xs text-gray-500 mt-0.5">On-chain behavioral tools enforced by Algorand smart contracts</p>
             </div>
             <span className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -329,7 +329,7 @@ export default function Dashboard() {
 
         <div className="rounded-2xl border border-gray-100 p-5 bg-white card-shadow">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-gray-900 text-base">Gamified Savings Quest</h3>
+            <h3 className="font-bold text-gray-900 text-base">Your Savings Journey</h3>
             <span className="text-xs text-gray-500">{questSteps.filter((s) => s.done).length}/4 complete</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5">
@@ -354,7 +354,7 @@ export default function Dashboard() {
         {/* PROGRESS SECTION */}
         <div className="rounded-2xl border border-gray-100 p-6 bg-white card-shadow">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="font-bold text-gray-900 text-lg tracking-tight">Progress to Next Milestone</h3>
+            <h3 className="font-bold text-gray-900 text-lg tracking-tight">Milestone Progress</h3>
             {next && (
               <span className="text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
                 Next: <span className="font-semibold text-gray-700">{next.name}</span> at {next.threshold} ALGO
