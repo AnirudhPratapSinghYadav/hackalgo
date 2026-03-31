@@ -5,7 +5,6 @@ import { getBalance } from '../services/algorand';
 const WALLETS = [
   { id: 'pera', name: 'Pera Wallet', color: 'from-yellow-400 to-orange-400', letter: 'P' },
   { id: 'defly', name: 'Defly Wallet', color: 'from-violet-500 to-purple-600', letter: 'D' },
-  { id: 'walletconnect', name: 'WalletConnect', color: 'from-blue-400 to-blue-600', letter: 'W' },
 ];
 
 export default function WalletConnect() {

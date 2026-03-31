@@ -52,6 +52,52 @@ const byteArrayType = algosdk.ABIType.from('byte[]')
 
 // ARC-4 selectors match `savings_vault/.../artifacts/savings_vault/SavingsVault.arc56.json` (deposit pay ref, withdraw + penalty_sink, etc.).
 
+// Legacy on-chain app (757999871) is an older ARC-4 router that DOES NOT include Pact/Lock/Dream.
+// It also uses a different withdraw signature (`withdraw(uint64)void`).
+const SELECTOR_WITHDRAW_LEGACY = Uint8Array.from([0x21, 0xf1, 0xdd, 0xff])
+
+type VaultContractMode = 'legacy_minimal' | 'full_pack'
+let cachedMode: VaultContractMode | null = null
+
+function selectorHex(selector: Uint8Array): string {
+  return Array.from(selector)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const raw = atob(b64)
+  const out = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i)
+  return out
+}
+
+async function detectContractMode(): Promise<VaultContractMode> {
+  if (cachedMode) return cachedMode
+  const algod = getAlgodClient()
+  const app = (await algod.getApplicationByID(APP_ID).do()) as any
+  const approvalB64 = app?.params?.['approval-program']
+  if (typeof approvalB64 !== 'string' || approvalB64.length === 0) {
+    cachedMode = 'legacy_minimal'
+    return cachedMode
+  }
+  const program = base64ToBytes(approvalB64)
+  const dis = (await algod.disassemble(program).do()) as any
+  const teal = String(dis?.result ?? '')
+  const hasFullWithdraw = teal.includes(`0x${selectorHex(SELECTOR_WITHDRAW)}`)
+  const hasLegacyWithdraw = teal.includes(`0x${selectorHex(SELECTOR_WITHDRAW_LEGACY)}`)
+  // Heuristic: full pack includes withdraw(uint64,address) + extra methods; legacy includes withdraw(uint64).
+  cachedMode = hasFullWithdraw ? 'full_pack' : hasLegacyWithdraw ? 'legacy_minimal' : 'legacy_minimal'
+  return cachedMode
+}
+
+function requiresFullPack(feature: string): never {
+  throw new Error(
+    `This feature (${feature}) is not supported by the currently deployed app (App ID ${APP_ID}). ` +
+      `Your on-chain contract is the legacy minimal vault. Deploy the latest SavingsVault contract and update VITE_APP_ID.`,
+  )
+}
+
 function assertConfig() {
   if (!Number.isFinite(APP_ID) || APP_ID <= 0) {
     throw new Error('Invalid VITE_APP_ID. Set a valid app id in .env.')
@@ -226,20 +272,27 @@ export async function depositToVault(signTransactions: SignTransactionsFn, addre
 export async function withdrawFromVault(signTransactions: SignTransactionsFn, address: string, amountAlgo: number, penaltySinkAddress?: string): Promise<string> {
   if (amountAlgo <= 0) throw new Error('Withdrawal must be greater than 0')
   const spBase = await getSuggestedParams()
-  const sp = withFlatFee(spBase, FEE_APP_WITHDRAW)
   const amountMicro = Math.round(amountAlgo * 1_000_000)
-  const sink = penaltySinkAddress || address
+  const mode = await detectContractMode()
 
-  const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
-    from: address,
-    appIndex: APP_ID,
-    appArgs: [
-      SELECTOR_WITHDRAW,
-      algosdk.encodeUint64(amountMicro),
-      encodeAddressArg(sink),
-    ],
-    suggestedParams: sp,
-  })
+  const appCallTxn =
+    mode === 'legacy_minimal'
+      ? algosdk.makeApplicationNoOpTxnFromObject({
+          from: address,
+          appIndex: APP_ID,
+          appArgs: [SELECTOR_WITHDRAW_LEGACY, algosdk.encodeUint64(amountMicro)],
+          suggestedParams: withFlatFee(spBase, FEE_APP_STANDARD),
+        })
+      : algosdk.makeApplicationNoOpTxnFromObject({
+          from: address,
+          appIndex: APP_ID,
+          appArgs: [
+            SELECTOR_WITHDRAW,
+            algosdk.encodeUint64(amountMicro),
+            encodeAddressArg(penaltySinkAddress || address),
+          ],
+          suggestedParams: withFlatFee(spBase, FEE_APP_WITHDRAW),
+        })
 
   const signed = await signTransactions([encodeTxnBytes(appCallTxn)])
   const validSigned = signed.filter((s): s is Uint8Array => s !== null)
@@ -364,6 +417,8 @@ export async function setupSavingsPact(
   cadenceDays: number,
   penaltyAmountAlgo: number,
 ): Promise<string> {
+  const mode = await detectContractMode()
+  if (mode !== 'full_pack') return requiresFullPack('Savings Pact')
   const spBase = await getSuggestedParams()
   const sp = withFlatFee(spBase, FEE_APP_STANDARD)
   const requiredMicro = Math.round(requiredAmountAlgo * 1_000_000)
@@ -395,6 +450,8 @@ export async function applyPactPenalty(
   partnerAddress: string,
   penaltyAmountAlgo: number,
 ): Promise<string> {
+  const mode = await detectContractMode()
+  if (mode !== 'full_pack') return requiresFullPack('Savings Pact penalty')
   const spBase = await getSuggestedParams()
   const amountMicro = Math.round(penaltyAmountAlgo * 1_000_000)
   const appAddr = getVaultAppAddress()
@@ -421,6 +478,8 @@ export async function setTemptationLock(
   penaltyBps: number,
   penaltySinkAddress: string,
 ): Promise<string> {
+  const mode = await detectContractMode()
+  if (mode !== 'full_pack') return requiresFullPack('Temptation Lock')
   const spBase = await getSuggestedParams()
   const sp = withFlatFee(spBase, FEE_APP_STANDARD)
   const goalMicro = Math.round(goalAmountAlgo * 1_000_000)
@@ -444,6 +503,8 @@ export async function setTemptationLock(
 }
 
 export async function disableTemptationLock(signTransactions: SignTransactionsFn, address: string): Promise<string> {
+  const mode = await detectContractMode()
+  if (mode !== 'full_pack') return requiresFullPack('Temptation Lock disable')
   const spBase = await getSuggestedParams()
   const sp = withFlatFee(spBase, FEE_APP_STANDARD)
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
@@ -461,6 +522,8 @@ export async function disableTemptationLock(signTransactions: SignTransactionsFn
 }
 
 export async function setDreamBoard(signTransactions: SignTransactionsFn, address: string, dreamUri: string, dreamTitle: string): Promise<string> {
+  const mode = await detectContractMode()
+  if (mode !== 'full_pack') return requiresFullPack('Dream Board')
   const spBase = await getSuggestedParams()
   const sp = withFlatFee(spBase, FEE_APP_STANDARD)
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
