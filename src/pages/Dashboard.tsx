@@ -12,7 +12,7 @@ import DepositForm from '../components/DepositForm'
 import WithdrawForm from '../components/WithdrawForm'
 import TransactionHistory from '../components/TransactionHistory'
 import MilestoneCards from '../components/MilestoneCard'
-import SavingsCoach from '../components/SavingsCoach'
+import AIChatbot from '../components/AIChatbot'
 
 const MILESTONES = [
   { level: 1, name: 'Vault Starter', threshold: 10 },
@@ -401,7 +401,7 @@ export default function Dashboard() {
         />
       )}
 
-      <SavingsCoach
+      <AIChatbot
         address={activeAddress}
         totalSaved={savedAlgo}
         streak={userStats.streak}
