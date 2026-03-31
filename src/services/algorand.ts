@@ -1,22 +1,12 @@
-import { AlgorandClient } from '@algorandfoundation/algokit-utils';
+import algosdk from 'algosdk';
 
-export const algorandClient = AlgorandClient.fromConfig({
-  algodConfig: {
-    server: 'https://testnet-api.algonode.cloud',
-    port: 443,
-    token: ''
-  },
-  indexerConfig: {
-    server: 'https://testnet-idx.algonode.cloud',
-    port: 443,
-    token: ''
-  }
-});
+const algodClient = new algosdk.Algodv2('', 'https://testnet-api.algonode.cloud', 443);
 
 export const getBalance = async (address: string): Promise<string> => {
   try {
-    const accountInfo = await algorandClient.client.algod.accountInformation(address).do() as any;
-    return (accountInfo.amount / 1000000).toFixed(2);
+    const accountInfo = await algodClient.accountInformation(address).do() as { amount?: number };
+    const microAlgos = accountInfo.amount ?? 0;
+    return (microAlgos / 1000000).toFixed(2);
   } catch (error) {
     console.error('Failed to fetch balance:', error);
     return '0.00';
