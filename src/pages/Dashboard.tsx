@@ -14,6 +14,7 @@ import TransactionHistory from '../components/TransactionHistory'
 import MilestoneCards from '../components/MilestoneCard'
 import ProgressJourney from '../components/ProgressJourney'
 import AIChatbot from '../components/AIChatbot'
+import { generateVaultSummary, type VaultSummaryType } from '../services/aiService'
 
 const MILESTONES = [
   { level: 1, name: 'Vault Starter', threshold: 10 },
@@ -36,6 +37,11 @@ export default function Dashboard() {
   const [optingIn, setOptingIn] = useState(false)
   const [showDeposit, setShowDeposit] = useState(false)
   const [showWithdraw, setShowWithdraw] = useState(false)
+  const [summaryOpen, setSummaryOpen] = useState(false)
+  const [summaryVault, setSummaryVault] = useState<VaultSummaryType>('personal')
+  const [summaryText, setSummaryText] = useState<string>('')
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
 
   const activeWallet = wallets?.find((w) => w.isActive) ?? wallets?.find((w) => w.isConnected)
 
@@ -73,6 +79,33 @@ export default function Dashboard() {
     { label: 'Make first deposit', done: userStats.totalSaved > 0 },
     { label: 'Claim first badge', done: userStats.milestone >= 1 },
   ]
+
+  const openSummary = async (vault: VaultSummaryType) => {
+    setSummaryOpen(true)
+    setSummaryVault(vault)
+    setSummaryLoading(true)
+    setSummaryError(null)
+    setSummaryText('')
+    try {
+      const recentDeposits = 'see AI panel'
+      const text = await generateVaultSummary(vault, {
+        totalSaved: savedAlgo,
+        streak: userStats.streak,
+        milestone: userStats.milestone,
+        lockEnabled: false,
+        goalAmount: 0,
+        penaltyPct: 0,
+        recentDeposits,
+        globalDeposited: globalAlgo,
+        globalContributors: globalStats.totalUsers,
+      })
+      setSummaryText(text)
+    } catch (e: any) {
+      setSummaryError(e?.message || 'Could not generate summary. Please try again.')
+    } finally {
+      setSummaryLoading(false)
+    }
+  }
 
   const handleOptIn = async () => {
     if (!activeAddress) return
@@ -150,6 +183,7 @@ export default function Dashboard() {
       tag: 'Guardian',
       tagColor: 'text-blue-700 bg-blue-50 border-blue-100',
       link: '/vault/guardian',
+      summaryType: 'guardian' as const,
       icon: (
         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
       ),
@@ -163,6 +197,7 @@ export default function Dashboard() {
       tag: 'Community',
       tagColor: 'text-emerald-700 bg-emerald-50 border-emerald-100',
       link: '/vault/community',
+      summaryType: 'community' as const,
       icon: (
         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
       ),
@@ -176,6 +211,7 @@ export default function Dashboard() {
       tag: 'Accountability',
       tagColor: 'text-amber-700 bg-amber-50 border-amber-100',
       link: '/pact',
+      summaryType: 'pact' as const,
       icon: (
         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
       ),
@@ -259,9 +295,18 @@ export default function Dashboard() {
                   </div>
                   <h3 className="font-bold text-gray-900 text-base mb-1.5">{vt.title}</h3>
                   <p className="text-xs text-gray-500 leading-relaxed mb-3">{vt.desc}</p>
-                  <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${vt.tagColor}`}>
-                    {vt.tag}
-                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${vt.tagColor}`}>
+                      {vt.tag}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); openSummary(vt.summaryType) }}
+                      className="text-[11px] font-semibold text-gray-500 hover:text-gray-900 hover:underline"
+                    >
+                      Gemini summary
+                    </button>
+                  </div>
                 </div>
               </button>
             ))}
@@ -427,6 +472,62 @@ export default function Dashboard() {
         milestone={userStats.milestone}
         onOpenDeposit={() => setShowDeposit(true)}
       />
+
+      {summaryOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSummaryOpen(false)}>
+          <div className="w-full max-w-2xl bg-white rounded-2xl overflow-hidden border border-white/10 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Gemini</p>
+                <h3 className="text-lg font-extrabold text-gray-900 tracking-tight">Vault summary</h3>
+              </div>
+              <button onClick={() => setSummaryOpen(false)} className="w-9 h-9 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-gray-900">
+                  {summaryVault === 'guardian'
+                    ? 'Education Guardian Vault'
+                    : summaryVault === 'community'
+                      ? 'Community Disaster Reserve'
+                      : summaryVault === 'pact'
+                        ? 'Savings Pact & Protection'
+                        : 'Personal Savings Vault'}
+                </p>
+                <button
+                  className="text-sm font-semibold text-[#2563EB] hover:underline"
+                  onClick={() => navigator.clipboard.writeText(summaryText || '')}
+                  disabled={!summaryText}
+                >
+                  Copy
+                </button>
+              </div>
+
+              {summaryLoading ? (
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                  <p className="text-sm text-gray-600 font-medium">Generating summary from your live on-chain context…</p>
+                  <p className="text-xs text-gray-500 mt-1">No hardcoded numbers. No guesses.</p>
+                </div>
+              ) : summaryError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+                  <p className="text-sm text-red-700 font-semibold">Could not generate summary</p>
+                  <p className="text-xs text-red-700/80 mt-1">{summaryError}</p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-gray-100 bg-white p-5">
+                  <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{summaryText}</div>
+                  <p className="text-[11px] text-gray-400 mt-4">
+                    Summary is grounded in your live stats and global on-chain totals. Verify transactions on Lora from History/Badges/Report.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

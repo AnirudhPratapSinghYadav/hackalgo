@@ -14,6 +14,8 @@ export interface UserContext {
   goalAmount: number
   penaltyPct: number
   recentDeposits: string
+  globalDeposited?: number
+  globalContributors?: number
 }
 
 function buildSystemPrompt(ctx: UserContext): string {
@@ -25,6 +27,9 @@ REAL USER DATA (from Algorand blockchain, not hardcoded):
 - Milestone badge level: ${ctx.milestone}/3 (10 ALGO = Starter, 50 = Builder, 100 = Master)
 - Temptation Lock: ${ctx.lockEnabled ? `ACTIVE — goal ${ctx.goalAmount.toFixed(0)} ALGO, ${ctx.penaltyPct}% early withdrawal penalty` : 'Not set'}
 - Recent deposits: ${ctx.recentDeposits || 'none yet'}
+${typeof ctx.globalDeposited === 'number' && typeof ctx.globalContributors === 'number'
+  ? `\nGLOBAL CONTEXT (from on-chain global state):\n- Total contributed (all users): ${ctx.globalDeposited.toFixed(2)} ALGO\n- Total contributors: ${ctx.globalContributors}`
+  : ''}
 
 PLATFORM CONTEXT:
 AlgoVault is not just a savings app — it is a promise-and-protection platform with three real-world use cases:
@@ -42,6 +47,31 @@ YOUR PERSONALITY:
 - You can respond in Hindi, Telugu, or English — match the user's language
 
 IMPORTANT: Never make up data. Only reference the numbers above. If asked something you don't know, say so honestly.`
+}
+
+export type VaultSummaryType = 'personal' | 'guardian' | 'community' | 'pact'
+
+function buildVaultSummaryRequest(vault: VaultSummaryType): string {
+  const vaultLabel =
+    vault === 'guardian'
+      ? 'Education Guardian Vault'
+      : vault === 'community'
+        ? 'Community Disaster Reserve'
+        : vault === 'pact'
+          ? 'Savings Pact & Protection'
+          : 'Personal Savings Vault'
+
+  return [
+    `Create a concise, product-grade summary for the user about: ${vaultLabel}.`,
+    'Format strictly as 6 bullet points, each bullet 1 sentence.',
+    'Each bullet must include at least one concrete number from the REAL USER DATA above (or from GLOBAL CONTEXT if present).',
+    'Do not speculate about features not proven by those numbers; if something is unknown, say "Not enough on-chain data yet."',
+    'Avoid hype. Use financial product language. Mention that transactions are verifiable on Lora where relevant.',
+  ].join('\n')
+}
+
+export async function generateVaultSummary(vault: VaultSummaryType, ctx: UserContext): Promise<string> {
+  return await sendChatMessage([], buildVaultSummaryRequest(vault), ctx)
 }
 
 export async function sendChatMessage(

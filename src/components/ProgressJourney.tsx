@@ -28,6 +28,8 @@ export default function ProgressJourney({
   const maxThreshold = milestones[milestones.length - 1]?.threshold ?? 100
   const progressPct = Math.min(100, (savedAlgo / maxThreshold) * 100)
   const isActive = savedAlgo > 0
+  const isComplete = progressPct >= 100
+  const nearMilestone = !isComplete && milestones.some((m) => savedAlgo < m.threshold && savedAlgo >= m.threshold * 0.9)
 
   const theme = (() => {
     if (variant === 'community') {
@@ -38,8 +40,9 @@ export default function ProgressJourney({
         activeNode: 'from-emerald-500 to-teal-600 border-emerald-300/50 shadow-emerald-500/30',
         approachingBorder: 'border-emerald-400/30 shadow-emerald-500/20',
         activeLabel: 'text-emerald-300',
-        avatar: isActive ? '🛡️' : '👤',
+        avatarTone: 'from-emerald-300 to-teal-400',
         title: 'Reserve Journey',
+        accentText: 'text-emerald-200',
       }
     }
     if (variant === 'guardian') {
@@ -50,8 +53,9 @@ export default function ProgressJourney({
         activeNode: 'from-blue-500 to-violet-600 border-blue-300/50 shadow-blue-500/30',
         approachingBorder: 'border-blue-400/30 shadow-blue-500/20',
         activeLabel: 'text-blue-300',
-        avatar: isActive ? '📘' : '👤',
+        avatarTone: 'from-blue-300 to-violet-400',
         title: 'Guardian Journey',
+        accentText: 'text-blue-200',
       }
     }
     return {
@@ -61,8 +65,9 @@ export default function ProgressJourney({
       activeNode: 'from-blue-500 to-violet-600 border-blue-400/50 shadow-blue-500/30',
       approachingBorder: 'border-blue-400/30 shadow-blue-500/20',
       activeLabel: 'text-blue-400',
-      avatar: isActive ? '🚶' : '👤',
+      avatarTone: 'from-blue-300 to-violet-400',
       title: 'Your Savings Journey',
+      accentText: 'text-white/80',
     }
   })()
 
@@ -77,7 +82,7 @@ export default function ProgressJourney({
       {/* Ambient glow behind avatar */}
       <div
         className={`absolute top-1/2 -translate-y-1/2 w-24 h-24 ${theme.glow} rounded-full blur-[40px] transition-all duration-1000 pointer-events-none`}
-        style={{ left: `calc(${Math.max(4, progressPct)}% - 48px)` }}
+        style={{ left: `calc(${Math.max(4, progressPct)}% - 56px)` }}
       />
 
       {/* Header */}
@@ -85,22 +90,27 @@ export default function ProgressJourney({
         <h3 className={`text-white font-bold ${compact ? 'text-sm' : 'text-base sm:text-lg'}`}>
           {theme.title}
         </h3>
-        <span className="text-xs text-white/40 font-mono">
-          {savedAlgo.toFixed(2)} / {maxThreshold} ALGO
-        </span>
+        <div className="text-right">
+          <p className="text-xs text-white/40 font-mono">
+            {savedAlgo.toFixed(2)} / {maxThreshold} ALGO
+          </p>
+          <p className={`text-[10px] ${theme.accentText}`}>
+            {isComplete ? 'Milestones completed' : nearMilestone ? 'Approaching milestone' : isActive ? 'In progress' : 'Not started'}
+          </p>
+        </div>
       </div>
 
-      {/* 3D Journey Path */}
+      {/* Journey Road */}
       <div className="relative z-10" style={{ perspective: '600px' }}>
         <div
-          className={`relative ${compact ? 'h-24 sm:h-28' : 'h-32 sm:h-36'}`}
+          className={`relative ${compact ? 'h-28 sm:h-32' : 'h-40 sm:h-44'}`}
           style={{ transform: 'rotateX(4deg)', transformOrigin: 'center bottom' }}
         >
           {/* Road shadow */}
-          <div className="absolute top-[55%] left-2 right-2 h-6 bg-black/30 rounded-full blur-md" />
+          <div className="absolute top-[58%] left-2 right-2 h-10 bg-black/30 rounded-full blur-md" />
 
           {/* Road track */}
-          <div className="absolute top-1/2 left-0 right-0 h-3 -translate-y-1/2 bg-white/[0.06] rounded-full border border-white/[0.04]">
+          <div className="absolute top-1/2 left-0 right-0 h-4 -translate-y-1/2 bg-white/[0.07] rounded-full border border-white/[0.05]">
             {/* Progress fill */}
             <div
               className={`h-full bg-gradient-to-r ${theme.fill} rounded-full transition-all duration-1000 ease-out relative`}
@@ -110,13 +120,24 @@ export default function ProgressJourney({
             </div>
           </div>
 
+          {/* Step plates (premium "road segments") */}
+          <div className="absolute top-1/2 left-2 right-2 -translate-y-1/2 flex items-center justify-between opacity-60">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-7 w-8 sm:w-10 rounded-xl bg-white/[0.05] border border-white/[0.05]"
+                style={{ transform: `skewX(-10deg) translateY(${i % 2 === 0 ? 0 : 2}px)` }}
+              />
+            ))}
+          </div>
+
           {/* Milestone nodes */}
           {milestones.map((m, i) => {
             const pos = (m.threshold / maxThreshold) * 100
             const reached = currentMilestone > i
             const active = currentMilestone === i && savedAlgo >= m.threshold
             const approaching = !reached && !active && savedAlgo >= m.threshold * 0.8
-            const scale = 1 + (1 - pos / 100) * 0.08
+            const scale = 1 + (1 - pos / 100) * 0.06
 
             return (
               <div
@@ -125,7 +146,7 @@ export default function ProgressJourney({
                 style={{ left: `${pos}%`, transform: `translateY(-50%) translateX(-50%) scale(${scale})` }}
               >
                 <div
-                  className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-500 border-2 ${
+                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-500 border-2 ${
                     reached
                       ? 'bg-gradient-to-br from-amber-400 to-orange-500 border-amber-300/50 shadow-lg shadow-amber-500/30'
                       : active
@@ -135,7 +156,7 @@ export default function ProgressJourney({
                           : 'bg-gray-800 border-gray-600'
                   }`}
                 >
-                  <span className={`${compact ? 'text-base' : 'text-lg sm:text-xl'}`}>
+                  <span className={`${compact ? 'text-base' : 'text-lg sm:text-2xl'}`}>
                     {reached || active ? m.icon : '\u{1F512}'}
                   </span>
                 </div>
@@ -160,14 +181,19 @@ export default function ProgressJourney({
             className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 transition-all duration-1000 ease-out"
             style={{ left: `${Math.max(3, progressPct)}%` }}
           >
-            <div
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xl border-2 transition-all ${
-                isActive
-                  ? `bg-gradient-to-br ${variant === 'community' ? 'from-emerald-400 to-teal-500' : variant === 'guardian' ? 'from-blue-400 to-violet-500' : 'from-blue-400 to-violet-500'} border-white/40 avatar-bounce`
-                  : 'bg-gray-700 border-gray-500 shadow-gray-900/40'
-              }`}
-            >
-              <span className="text-sm sm:text-base">{theme.avatar}</span>
+            <div className="relative">
+              {/* character shadow */}
+              <div className="absolute left-1/2 top-[70%] -translate-x-1/2 w-14 sm:w-16 h-4 bg-black/40 blur-md rounded-full" />
+
+              <div
+                className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-[26px] flex items-center justify-center shadow-2xl border transition-all tilt-hover ${
+                  isActive
+                    ? `bg-gradient-to-br ${theme.avatarTone} border-white/40 ${isComplete ? '' : 'avatar-bounce'}`
+                    : 'bg-gray-700 border-gray-500 shadow-gray-900/40'
+                }`}
+              >
+                <RoadCharacter state={isComplete ? 'complete' : nearMilestone ? 'near' : isActive ? 'walk' : 'idle'} />
+              </div>
             </div>
             {/* Trail particles when active */}
             {isActive && (
@@ -202,6 +228,26 @@ export default function ProgressJourney({
             {currentMilestone} badge{currentMilestone > 1 ? 's' : ''} earned
           </span>
         )}
+      </div>
+    </div>
+  )
+}
+
+function RoadCharacter({ state }: { state: 'idle' | 'walk' | 'near' | 'complete' }) {
+  const face =
+    state === 'complete' ? '😄' : state === 'near' ? '😮' : state === 'walk' ? '🙂' : '😐'
+  const badge =
+    state === 'complete' ? '🏁' : state === 'near' ? '⭐' : state === 'walk' ? '👣' : '•'
+
+  return (
+    <div className="w-full h-full flex items-center justify-center">
+      <div className="relative w-full h-full flex items-center justify-center">
+        <div className="absolute top-3 right-3 text-xs sm:text-sm bg-white/15 border border-white/20 rounded-full px-2 py-0.5">
+          {badge}
+        </div>
+        <div className={`text-2xl sm:text-3xl ${state === 'walk' ? 'animate-pulse' : ''}`}>
+          {face}
+        </div>
       </div>
     </div>
   )

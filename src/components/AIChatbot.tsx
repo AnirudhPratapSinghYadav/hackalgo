@@ -28,6 +28,8 @@ export default function AIChatbot({ address, totalSaved, streak, milestone, onOp
     totalSaved, streak, milestone,
     lockEnabled: false, goalAmount: 0, penaltyPct: 0,
     recentDeposits: 'loading...',
+    globalDeposited: undefined,
+    globalContributors: undefined,
   })
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
