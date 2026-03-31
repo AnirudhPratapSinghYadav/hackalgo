@@ -1,10 +1,21 @@
-import algosdk, { type Algodv2 } from 'algosdk'
+import algosdk, { type Algodv2, type SuggestedParams } from 'algosdk'
 
 export type SignTransactionsFn = (txns: Uint8Array[]) => Promise<(Uint8Array | null)[]>
 
 const APP_ID = Number(import.meta.env.VITE_APP_ID)
-const APP_ADDRESS = import.meta.env.VITE_APP_ADDRESS
 const NETWORK = (import.meta.env.VITE_NETWORK || 'testnet').toLowerCase()
+
+/** MicroAlgo flat fees — explicit so grouped txns and inner-txn-heavy calls have enough budget. */
+const FEE_OPT_IN = 1000
+const FEE_PAY_DEPOSIT = 1000
+const FEE_APP_DEPOSIT = 2000
+const FEE_APP_STANDARD = 2000
+const FEE_APP_WITHDRAW = 5000
+const FEE_APP_CLAIM_BADGE = 4000
+const FEE_PAY_PACT = 1000
+const FEE_APP_PACT = 2000
+
+let loggedVaultConfig = false
 
 // ARC-4 method selectors computed from signatures to avoid hardcoded drift.
 const SELECTOR_OPT_IN = new algosdk.ABIMethod({ name: 'opt_in', args: [], returns: { type: 'void' } }).getSelector()
@@ -39,6 +50,8 @@ const SELECTOR_SET_DREAM = new algosdk.ABIMethod({
 const DEPOSIT_SELECTOR_B64 = toBase64(SELECTOR_DEPOSIT)
 const byteArrayType = algosdk.ABIType.from('byte[]')
 
+// ARC-4 selectors match `savings_vault/.../artifacts/savings_vault/SavingsVault.arc56.json` (deposit pay ref, withdraw + penalty_sink, etc.).
+
 function assertConfig() {
   if (!Number.isFinite(APP_ID) || APP_ID <= 0) {
     throw new Error('Invalid VITE_APP_ID. Set a valid app id in .env.')
@@ -49,6 +62,23 @@ function assertConfig() {
   if (!import.meta.env.VITE_INDEXER_SERVER) {
     throw new Error('Missing VITE_INDEXER_SERVER in .env.')
   }
+}
+
+function withFlatFee(sp: SuggestedParams, fee: number): SuggestedParams {
+  return { ...sp, fee, flatFee: true }
+}
+
+function encodeTxnBytes(txn: algosdk.Transaction): Uint8Array {
+  return algosdk.encodeUnsignedTransaction(txn)
+}
+
+/**
+ * Application account for this vault — always derived from `VITE_APP_ID`.
+ * Never read `VITE_APP_ADDRESS` from env (wrong values cause “malformed address” on payments).
+ */
+export function getVaultAppAddress(): string {
+  assertConfig()
+  return algosdk.getApplicationAddress(APP_ID)
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -88,14 +118,13 @@ export function getExplorerAssetUrl(assetId: number | string): string {
   return `${getLoraBaseUrl()}/asset/${assetId}`
 }
 
-function getAppAddress(): string {
-  // Prefer explicit env value; fallback to deterministic app address by APP_ID.
-  if (APP_ADDRESS && APP_ADDRESS.length > 0) return APP_ADDRESS
-  return algosdk.getApplicationAddress(APP_ID)
-}
-
 export function getAlgodClient(): Algodv2 {
   assertConfig()
+  if (import.meta.env.DEV && !loggedVaultConfig) {
+    loggedVaultConfig = true
+    console.log('[AlgoVault] APP_ID:', APP_ID)
+    console.log('[AlgoVault] APP_ADDRESS (derived):', algosdk.getApplicationAddress(APP_ID))
+  }
   return new algosdk.Algodv2(
     import.meta.env.VITE_ALGOD_TOKEN || '',
     import.meta.env.VITE_ALGOD_SERVER,
@@ -142,50 +171,52 @@ async function getSuggestedParams() {
 async function signAndSendGroup(signTransactions: SignTransactionsFn, txns: algosdk.Transaction[]): Promise<string> {
   const algod = getAlgodClient()
   algosdk.assignGroupID(txns)
-  const bytesToSign = txns.map((t) => t.toByte())
+  const bytesToSign = txns.map((t) => encodeTxnBytes(t))
   const signed = await signTransactions(bytesToSign)
   const validSigned = signed.filter((s): s is Uint8Array => s !== null)
   const { txId } = await algod.sendRawTransaction(validSigned).do()
-  await algosdk.waitForConfirmation(algod, txId, 8)
+  await algosdk.waitForConfirmation(algod, txId, 4)
   return txId
 }
 
 // Opt into vault app
 export async function optInToVault(signTransactions: SignTransactionsFn, address: string): Promise<string> {
-  const sp = await getSuggestedParams()
+  const spBase = await getSuggestedParams()
+  const sp = withFlatFee(spBase, FEE_OPT_IN)
   const txn = algosdk.makeApplicationOptInTxnFromObject({
     from: address,
     appIndex: APP_ID,
     appArgs: [SELECTOR_OPT_IN],
     suggestedParams: sp,
   })
-  const signed = await signTransactions([txn.toByte()])
+  const signed = await signTransactions([encodeTxnBytes(txn)])
   const validSigned = signed.filter((s): s is Uint8Array => s !== null)
   const algod = getAlgodClient()
   const { txId } = await algod.sendRawTransaction(validSigned[0]).do()
-  await algosdk.waitForConfirmation(algod, txId, 8)
+  await algosdk.waitForConfirmation(algod, txId, 4)
   return txId
 }
 
 // ATOMIC GROUP: PaymentTxn + AppCallTxn together
 export async function depositToVault(signTransactions: SignTransactionsFn, address: string, amountAlgo: number): Promise<string> {
   if (amountAlgo < 1) throw new Error('Minimum 1 ALGO')
-  const sp = await getSuggestedParams()
+  const spBase = await getSuggestedParams()
   const amountMicro = Math.round(amountAlgo * 1_000_000)
+  const appAddr = getVaultAppAddress()
 
   const payTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: getAppAddress(),
+    to: appAddr,
     amount: amountMicro,
-    suggestedParams: sp,
+    suggestedParams: withFlatFee(spBase, FEE_PAY_DEPOSIT),
   })
 
   const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
-    // ARC-4 txn arg: reference the payment txn by index (0)
+    // ARC-4 txn arg: reference the payment txn by index (0) — matches SavingsVault.arc56.json deposit(pay)
     appArgs: [SELECTOR_DEPOSIT, encodeTxnRefArg(0)],
-    suggestedParams: sp,
+    suggestedParams: withFlatFee(spBase, FEE_APP_DEPOSIT),
   })
 
   return await signAndSendGroup(signTransactions, [payTxn, appCallTxn])
@@ -194,7 +225,8 @@ export async function depositToVault(signTransactions: SignTransactionsFn, addre
 // Withdraw from vault
 export async function withdrawFromVault(signTransactions: SignTransactionsFn, address: string, amountAlgo: number, penaltySinkAddress?: string): Promise<string> {
   if (amountAlgo <= 0) throw new Error('Withdrawal must be greater than 0')
-  const sp = await getSuggestedParams()
+  const spBase = await getSuggestedParams()
+  const sp = withFlatFee(spBase, FEE_APP_WITHDRAW)
   const amountMicro = Math.round(amountAlgo * 1_000_000)
   const sink = penaltySinkAddress || address
 
@@ -209,15 +241,15 @@ export async function withdrawFromVault(signTransactions: SignTransactionsFn, ad
     suggestedParams: sp,
   })
 
-  const signed = await signTransactions([appCallTxn.toByte()])
+  const signed = await signTransactions([encodeTxnBytes(appCallTxn)])
   const validSigned = signed.filter((s): s is Uint8Array => s !== null)
   const algod = getAlgodClient()
   const { txId } = await algod.sendRawTransaction(validSigned[0]).do()
-  await algosdk.waitForConfirmation(algod, txId, 8)
+  await algosdk.waitForConfirmation(algod, txId, 4)
   return txId
 }
 
-// Read user local state
+// Read user local state (`user_total` is microAlgos on-chain — UI divides by 1e6 for ALGO)
 export async function getUserStats(address: string): Promise<{
   totalSaved: number
   milestone: number
@@ -293,7 +325,8 @@ function buildArc69Note(address: string, level: number): Uint8Array {
 
 export async function claimBadge(signTransactions: SignTransactionsFn, address: string, level: number): Promise<{ txId: string; assetId?: number }> {
   if (![1, 2, 3].includes(level)) throw new Error('Milestone level must be 1, 2, or 3')
-  const sp = await getSuggestedParams()
+  const spBase = await getSuggestedParams()
+  const sp = withFlatFee(spBase, FEE_APP_CLAIM_BADGE)
   const arc69Note = buildArc69Note(address, level)
   const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
@@ -305,11 +338,11 @@ export async function claimBadge(signTransactions: SignTransactionsFn, address: 
     note: arc69Note,
     suggestedParams: sp,
   })
-  const signed = await signTransactions([appCallTxn.toByte()])
+  const signed = await signTransactions([encodeTxnBytes(appCallTxn)])
   const validSigned = signed.filter((s): s is Uint8Array => s !== null)
   const algod = getAlgodClient()
   const { txId } = await algod.sendRawTransaction(validSigned[0]).do()
-  await algosdk.waitForConfirmation(algod, txId, 8)
+  await algosdk.waitForConfirmation(algod, txId, 4)
 
   try {
     const p = (await algod.pendingTransactionInformation(txId).do()) as any
@@ -331,7 +364,8 @@ export async function setupSavingsPact(
   cadenceDays: number,
   penaltyAmountAlgo: number,
 ): Promise<string> {
-  const sp = await getSuggestedParams()
+  const spBase = await getSuggestedParams()
+  const sp = withFlatFee(spBase, FEE_APP_STANDARD)
   const requiredMicro = Math.round(requiredAmountAlgo * 1_000_000)
   const penaltyMicro = Math.round(penaltyAmountAlgo * 1_000_000)
   const cadenceSeconds = Math.round(cadenceDays * 24 * 60 * 60)
@@ -347,11 +381,11 @@ export async function setupSavingsPact(
     ],
     suggestedParams: sp,
   })
-  const signed = await signTransactions([txn.toByte()])
+  const signed = await signTransactions([encodeTxnBytes(txn)])
   const validSigned = signed.filter((s): s is Uint8Array => s !== null)
   const algod = getAlgodClient()
   const { txId } = await algod.sendRawTransaction(validSigned[0]).do()
-  await algosdk.waitForConfirmation(algod, txId, 8)
+  await algosdk.waitForConfirmation(algod, txId, 4)
   return txId
 }
 
@@ -361,20 +395,21 @@ export async function applyPactPenalty(
   partnerAddress: string,
   penaltyAmountAlgo: number,
 ): Promise<string> {
-  const sp = await getSuggestedParams()
+  const spBase = await getSuggestedParams()
   const amountMicro = Math.round(penaltyAmountAlgo * 1_000_000)
+  const appAddr = getVaultAppAddress()
   const payTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
-    to: getAppAddress(),
+    to: appAddr,
     amount: amountMicro,
-    suggestedParams: sp,
+    suggestedParams: withFlatFee(spBase, FEE_PAY_PACT),
   })
   const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
     // ARC-4 txn arg: reference the payment txn by index (0)
     appArgs: [SELECTOR_APPLY_PACT_PENALTY, encodeAddressArg(partnerAddress), encodeTxnRefArg(0)],
-    suggestedParams: sp,
+    suggestedParams: withFlatFee(spBase, FEE_APP_PACT),
   })
   return signAndSendGroup(signTransactions, [payTxn, appCallTxn])
 }
@@ -386,7 +421,8 @@ export async function setTemptationLock(
   penaltyBps: number,
   penaltySinkAddress: string,
 ): Promise<string> {
-  const sp = await getSuggestedParams()
+  const spBase = await getSuggestedParams()
+  const sp = withFlatFee(spBase, FEE_APP_STANDARD)
   const goalMicro = Math.round(goalAmountAlgo * 1_000_000)
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
@@ -399,32 +435,34 @@ export async function setTemptationLock(
     ],
     suggestedParams: sp,
   })
-  const signed = await signTransactions([txn.toByte()])
+  const signed = await signTransactions([encodeTxnBytes(txn)])
   const validSigned = signed.filter((s): s is Uint8Array => s !== null)
   const algod = getAlgodClient()
   const { txId } = await algod.sendRawTransaction(validSigned[0]).do()
-  await algosdk.waitForConfirmation(algod, txId, 8)
+  await algosdk.waitForConfirmation(algod, txId, 4)
   return txId
 }
 
 export async function disableTemptationLock(signTransactions: SignTransactionsFn, address: string): Promise<string> {
-  const sp = await getSuggestedParams()
+  const spBase = await getSuggestedParams()
+  const sp = withFlatFee(spBase, FEE_APP_STANDARD)
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
     appArgs: [SELECTOR_DISABLE_LOCK],
     suggestedParams: sp,
   })
-  const signed = await signTransactions([txn.toByte()])
+  const signed = await signTransactions([encodeTxnBytes(txn)])
   const validSigned = signed.filter((s): s is Uint8Array => s !== null)
   const algod = getAlgodClient()
   const { txId } = await algod.sendRawTransaction(validSigned[0]).do()
-  await algosdk.waitForConfirmation(algod, txId, 8)
+  await algosdk.waitForConfirmation(algod, txId, 4)
   return txId
 }
 
 export async function setDreamBoard(signTransactions: SignTransactionsFn, address: string, dreamUri: string, dreamTitle: string): Promise<string> {
-  const sp = await getSuggestedParams()
+  const spBase = await getSuggestedParams()
+  const sp = withFlatFee(spBase, FEE_APP_STANDARD)
   const txn = algosdk.makeApplicationNoOpTxnFromObject({
     from: address,
     appIndex: APP_ID,
@@ -435,11 +473,11 @@ export async function setDreamBoard(signTransactions: SignTransactionsFn, addres
     ],
     suggestedParams: sp,
   })
-  const signed = await signTransactions([txn.toByte()])
+  const signed = await signTransactions([encodeTxnBytes(txn)])
   const validSigned = signed.filter((s): s is Uint8Array => s !== null)
   const algod = getAlgodClient()
   const { txId } = await algod.sendRawTransaction(validSigned[0]).do()
-  await algosdk.waitForConfirmation(algod, txId, 8)
+  await algosdk.waitForConfirmation(algod, txId, 4)
   return txId
 }
 
@@ -510,13 +548,16 @@ export async function getTransactionHistory(
   limit: number = 10,
 ): Promise<Array<{ txId: string; amount: number; type: string; timestamp: number; action: string; loraUrl: string }>> {
   const indexer = getIndexerClient()
-  const res = (await indexer.searchForTransactions().address(address).limit(Math.max(30, limit * 3)).do()) as any
+  const vaultAddr = getVaultAppAddress()
+  // Query by account only (not `application-id` alone): deposit groups include a pay txn
+  // without application-id; we need the full group in the page to label "Deposit" vs "Payment".
+  const res = (await indexer.searchForTransactions().address(address).limit(Math.max(40, limit * 5)).do()) as any
   const txns = res?.transactions ?? []
   const byId = new Map<string, any>(txns.map((t: any) => [t?.id, t]))
 
   const classifyAction = (t: any): string => {
     const type = t?.['tx-type']
-    if (type === 'pay' && t?.sender === address && t?.['payment-transaction']?.receiver === getAppAddress()) {
+    if (type === 'pay' && t?.sender === address && t?.['payment-transaction']?.receiver === vaultAddr) {
       const group = t?.group
       if (!group) return 'Payment'
       const hasDepositCall = txns.some(
@@ -560,7 +601,7 @@ export async function getTransactionHistory(
 
 export async function getRecentDepositsSummary(address: string, count: number = 3): Promise<string> {
   const indexer = getIndexerClient()
-  const appAddress = getAppAddress()
+  const appAddress = getVaultAppAddress()
   const res = (await indexer.searchForTransactions().address(address).limit(50).do()) as any
   const txns = (res?.transactions ?? []) as any[]
 

@@ -80,7 +80,7 @@ Use this exact order for demo:
    - `algokit project deploy testnet`
 3. Update frontend env:
    - `VITE_APP_ID=<new_testnet_app_id>`
-   - `VITE_APP_ADDRESS=<new_testnet_app_address>`
+   - App address is derived from `VITE_APP_ID` via `algosdk.getApplicationAddress` (do not set `VITE_APP_ADDRESS`).
    - `VITE_ALGOD_SERVER=https://testnet-api.algonode.cloud`
    - `VITE_ALGOD_PORT=443`
    - `VITE_ALGOD_TOKEN=`

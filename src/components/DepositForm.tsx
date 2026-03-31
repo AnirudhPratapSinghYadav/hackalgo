@@ -1,15 +1,13 @@
 import { useState } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import confetti from 'canvas-confetti'
-import { depositToVault, getExplorerTransactionUrl } from '../services/algorand'
+import { depositToVault, getExplorerTransactionUrl, getVaultAppAddress } from '../services/algorand'
 
 interface Props {
   onClose: () => void
   onSuccess: (milestoneReached?: boolean) => void
   currentSavedAlgo: number
 }
-
-const APP_ADDRESS = import.meta.env.VITE_APP_ADDRESS ?? ''
 
 function truncateAddr(addr: string) {
   return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '\u2014'
@@ -26,7 +24,7 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo }: Pr
   const numAmount = Number(amount)
   const valid = numAmount >= 1 && !isNaN(numAmount)
   const microAlgo = valid ? Math.round(numAmount * 1_000_000) : 0
-  const fee = 0.002
+  const fee = 0.003
   const projectedTotal = valid ? currentSavedAlgo + numAmount : currentSavedAlgo
   const nextMilestone = projectedTotal < 10 ? 10 : projectedTotal < 50 ? 50 : projectedTotal < 100 ? 100 : null
 
@@ -152,7 +150,7 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo }: Pr
               <div className="bg-gray-50 rounded-xl p-4 space-y-2.5 text-sm mb-5">
                 <div className="flex justify-between text-gray-500">
                   <span>Vault address</span>
-                  <span className="font-mono text-gray-600">{truncateAddr(APP_ADDRESS)}</span>
+                  <span className="font-mono text-gray-600">{truncateAddr(getVaultAppAddress())}</span>
                 </div>
                 <div className="flex justify-between text-gray-500">
                   <span>Estimated fee</span>
