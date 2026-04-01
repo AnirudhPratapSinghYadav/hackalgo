@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { getExplorerTransactionUrl, withdrawFromVault } from '../services/algorand'
+import { getExplorerTransactionUrl, getUserExtraState, withdrawFromVault } from '../services/algorand'
 
 interface Props {
   onClose: () => void
@@ -16,6 +16,21 @@ export default function WithdrawForm({ onClose, onSuccess, currentBalanceMicro }
   const [status, setStatus] = useState<'idle' | 'signing' | 'confirming' | 'done' | 'error'>('idle')
   const [txId, setTxId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** When lock is on and balance < goal, contract requires withdraw(penalty_sink) == stored penalty_sink */
+  const [lockSink, setLockSink] = useState<{ lockEnabled: number; goalMicro: number; penaltySink: string } | null>(null)
+
+  useEffect(() => {
+    if (!activeAddress) return
+    getUserExtraState(activeAddress)
+      .then((s) =>
+        setLockSink({
+          lockEnabled: s.lockEnabled,
+          goalMicro: s.goalAmountMicro,
+          penaltySink: s.penaltySink,
+        }),
+      )
+      .catch(() => setLockSink(null))
+  }, [activeAddress])
 
   const numAmount = Number(amount)
   const valid = numAmount > 0 && numAmount <= maxAlgo && !isNaN(numAmount)
@@ -31,7 +46,19 @@ export default function WithdrawForm({ onClose, onSuccess, currentBalanceMicro }
         setStatus('confirming')
         return result
       }
-      const id = await withdrawFromVault(wrappedSign, activeAddress, numAmount)
+      const belowLockGoal =
+        !!lockSink &&
+        lockSink.lockEnabled === 1 &&
+        lockSink.goalMicro > 0 &&
+        currentBalanceMicro < lockSink.goalMicro
+      const penaltySinkOnChain =
+        belowLockGoal && lockSink.penaltySink.length === 58 ? lockSink.penaltySink : undefined
+      if (belowLockGoal && !penaltySinkOnChain) {
+        throw new Error(
+          'Temptation Lock is active and you are below your on-chain goal. The contract needs your saved penalty destination — refresh the page and try again.',
+        )
+      }
+      const id = await withdrawFromVault(wrappedSign, activeAddress, numAmount, penaltySinkOnChain)
       setTxId(id)
       setStatus('done')
     } catch (e: any) {
@@ -118,7 +145,17 @@ export default function WithdrawForm({ onClose, onSuccess, currentBalanceMicro }
 
               <div className="bg-amber-50/80 border border-amber-200/60 rounded-xl px-4 py-3 mb-5 flex items-start gap-2.5">
                 <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <p className="text-xs text-amber-800 leading-relaxed">Withdrawing may reduce your deposit streak and delay milestone progress.</p>
+                <div className="text-xs text-amber-800 leading-relaxed space-y-1">
+                  <p>Withdrawing may reduce your deposit streak and delay milestone progress.</p>
+                  {lockSink &&
+                    lockSink.lockEnabled === 1 &&
+                    lockSink.goalMicro > 0 &&
+                    currentBalanceMicro < lockSink.goalMicro && (
+                      <p className="font-semibold">
+                        Temptation Lock is on and you are below your on-chain goal — early withdrawals send the penalty slice to your saved penalty address (enforced by the contract).
+                      </p>
+                    )}
+                </div>
               </div>
 
               {error && (
