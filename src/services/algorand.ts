@@ -353,6 +353,12 @@ export async function withdrawFromVault(signTransactions: SignTransactionsFn, ad
   const mode = await detectContractMode()
   const note = buildActionNote('withdraw', { user: address, amount_micro: amountMicro })
 
+  const penaltySinkResolved =
+    penaltySinkAddress && penaltySinkAddress.length === 58 ? penaltySinkAddress : address
+  // Inner txn to penalty_sink requires that account in the app call's foreign accounts (AVM "available"),
+  // e.g. burn / charity / partner — not needed when sink is the sender.
+  const withdrawForeignAccounts = penaltySinkResolved !== address ? [penaltySinkResolved] : undefined
+
   const appCallTxn =
     mode === 'legacy_minimal'
       ? algosdk.makeApplicationNoOpTxnFromObject({
@@ -368,8 +374,9 @@ export async function withdrawFromVault(signTransactions: SignTransactionsFn, ad
           appArgs: [
             SELECTOR_WITHDRAW,
             algosdk.encodeUint64(amountMicro),
-            encodeAddressArg(penaltySinkAddress || address),
+            encodeAddressArg(penaltySinkResolved),
           ],
+          accounts: withdrawForeignAccounts,
           note,
           suggestedParams: withFlatFee(spBase, FEE_APP_WITHDRAW),
         })
