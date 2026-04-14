@@ -1,4 +1,4 @@
-from algopy import (
+﻿from algopy import (
     ARC4Contract, GlobalState, LocalState,
     UInt64, Bytes, Account,
     itxn, arc4, subroutine,
@@ -21,6 +21,12 @@ class SavingsVault(ARC4Contract):
     pact_penalty_amount: GlobalState[UInt64]
     pact_user_a: GlobalState[Bytes]
     pact_user_b: GlobalState[Bytes]
+    # Stablecoin + agentic release configuration (Future of Finance track)
+    stablecoin_asset_id: GlobalState[UInt64]
+    stablecoin_total: GlobalState[UInt64]
+    beneficiary_addr: GlobalState[Bytes]
+    beneficiary_release_timestamp: GlobalState[UInt64]
+    agent_addr: GlobalState[Bytes]
     user_total: LocalState[UInt64]
     user_milestone: LocalState[UInt64]
     user_streak: LocalState[UInt64]
@@ -31,6 +37,8 @@ class SavingsVault(ARC4Contract):
     penalty_sink: LocalState[Bytes]
     dream_uri: LocalState[Bytes]
     dream_title: LocalState[Bytes]
+    # Stablecoin balance per user (single configured ASA)
+    user_stablecoin_total: LocalState[UInt64]
 
     def __init__(self) -> None:
         self.total_deposited = GlobalState(UInt64(0))
@@ -47,6 +55,11 @@ class SavingsVault(ARC4Contract):
         self.pact_penalty_amount = GlobalState(UInt64(100_000))
         self.pact_user_a = GlobalState(Bytes(b""))
         self.pact_user_b = GlobalState(Bytes(b""))
+        self.stablecoin_asset_id = GlobalState(UInt64(0))
+        self.stablecoin_total = GlobalState(UInt64(0))
+        self.beneficiary_addr = GlobalState(Bytes(b""))
+        self.beneficiary_release_timestamp = GlobalState(UInt64(0))
+        self.agent_addr = GlobalState(Bytes(b""))
         self.user_total = LocalState(UInt64)
         self.user_milestone = LocalState(UInt64)
         self.user_streak = LocalState(UInt64)
@@ -57,6 +70,7 @@ class SavingsVault(ARC4Contract):
         self.penalty_sink = LocalState(Bytes)
         self.dream_uri = LocalState(Bytes)
         self.dream_title = LocalState(Bytes)
+        self.user_stablecoin_total = LocalState(UInt64)
 
     @arc4.abimethod(allow_actions=["OptIn"])
     def opt_in(self) -> None:
@@ -70,6 +84,7 @@ class SavingsVault(ARC4Contract):
         self.penalty_sink[Txn.sender] = Txn.sender.bytes
         self.dream_uri[Txn.sender] = Bytes(b"")
         self.dream_title[Txn.sender] = Bytes(b"")
+        self.user_stablecoin_total[Txn.sender] = UInt64(0)
         self.total_users.value += UInt64(1)
 
     @arc4.abimethod
@@ -83,6 +98,85 @@ class SavingsVault(ARC4Contract):
             self.user_streak[Txn.sender] += UInt64(1)
         self.last_deposit[Txn.sender] = Global.latest_timestamp
         return self._check_milestone(Txn.sender)
+
+    @arc4.abimethod
+    def configure_stablecoin_and_release(
+        self,
+        stablecoin_asset_id: UInt64,
+        beneficiary: Account,
+        release_ts: UInt64,
+        agent: Account,
+    ) -> None:
+        """
+        One-time (or admin-updatable) configuration for:
+        - which ASA is treated as the stablecoin deposit rail
+        - who the beneficiary is for agentic release
+        - when time-based release becomes valid
+        - which address is authorized as an on-chain agent trigger
+
+        SECURITY: restricted to the application creator.
+        """
+        assert Txn.sender == Global.creator_address
+        assert stablecoin_asset_id > UInt64(0)
+        self.stablecoin_asset_id.value = stablecoin_asset_id
+        self.beneficiary_addr.value = beneficiary.bytes
+        self.beneficiary_release_timestamp.value = release_ts
+        self.agent_addr.value = agent.bytes
+
+        # Ensure the app account is opted into the configured stablecoin ASA.
+        # Opt-in is a 0-amount AssetTransfer to self from the app account.
+        itxn.AssetTransfer(
+            sender=Global.current_application_address,
+            asset_receiver=Global.current_application_address,
+            asset_amount=UInt64(0),
+            xfer_asset=stablecoin_asset_id,
+            fee=0,
+        ).submit()
+
+    @arc4.abimethod
+    def deposit_stablecoin(self, axfer: gtxn.AssetTransferTransaction, asset_id: UInt64) -> UInt64:
+        """
+        Stablecoin deposit rail (ASA):
+        - expects an AssetTransfer (grouped with this app call) into the app account
+        - records balances in local state and global totals
+        """
+        assert self.stablecoin_asset_id.value > UInt64(0)
+        assert asset_id == self.stablecoin_asset_id.value
+        assert axfer.asset_receiver == Global.current_application_address
+        # In PuyaPy, xfer_asset is an Asset type; compare by id
+        assert axfer.xfer_asset.id == asset_id
+        assert axfer.sender == Txn.sender
+        assert axfer.asset_amount > UInt64(0)
+        self.user_stablecoin_total[Txn.sender] += axfer.asset_amount
+        self.stablecoin_total.value += axfer.asset_amount
+        return self.user_stablecoin_total[Txn.sender]
+
+    @arc4.abimethod
+    def agentic_release(self) -> None:
+        """
+        Agentic release trigger:
+        - can be invoked either by the authorized agent address OR once the release timestamp has passed
+        - releases the configured stablecoin pool to the configured beneficiary
+        """
+        # Authorization: explicit agent OR time-based threshold.
+        agent_ok = (self.agent_addr.value != Bytes(b"") and Txn.sender.bytes == self.agent_addr.value)
+        time_ok = (self.beneficiary_release_timestamp.value > UInt64(0) and Global.latest_timestamp >= self.beneficiary_release_timestamp.value)
+        assert agent_ok or time_ok
+
+        assert self.stablecoin_asset_id.value > UInt64(0)
+        assert self.beneficiary_addr.value != Bytes(b"")
+        amount = self.stablecoin_total.value
+        assert amount > UInt64(0)
+
+        beneficiary_acct = Account.from_bytes(self.beneficiary_addr.value)
+        itxn.AssetTransfer(
+            sender=Global.current_application_address,
+            asset_receiver=beneficiary_acct,
+            asset_amount=amount,
+            xfer_asset=self.stablecoin_asset_id.value,
+            fee=0,
+        ).submit()
+        self.stablecoin_total.value = UInt64(0)
 
     @arc4.abimethod
     def claim_badge(self, milestone_level: UInt64) -> UInt64:
