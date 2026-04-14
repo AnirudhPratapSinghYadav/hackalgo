@@ -11,7 +11,7 @@ This document is your **single source of truth** for preparing a **demo script, 
 **Proof model**: Every action has a **Lora explorer link**, and a dedicated **Protocol Explorer** page explains the exact Algorand primitives used.
 
 **Network**: TestNet  
-**App ID**: `758024719` (from `.env`)  
+**App ID**: `758809030` (from `.env`)  
 **Algod**: `https://testnet-api.algonode.cloud`  
 **Indexer**: `https://testnet-idx.algonode.cloud`  
 
@@ -90,7 +90,7 @@ Opt-in creates the user’s local state entry for the application, enabling on-c
 - `src/services/algorand.ts` → `optInToVault()`
 
 ### Proof on Lora
-- The tx exists under the user wallet history and targets the App ID `758024719`
+- The tx exists under the user wallet history and targets the App ID `758809030`
 - Note panel shows JSON (in Protocol Explorer, it renders pretty JSON when available)
 
 ---
@@ -349,7 +349,7 @@ We attach structured JSON notes to transactions we construct so explorer viewers
 
 ### Environment variables (frontend)
 From `.env`:
-- `VITE_APP_ID=758024719`
+- `VITE_APP_ID=758809030`
 - `VITE_ALGOD_SERVER=https://testnet-api.algonode.cloud`
 - `VITE_INDEXER_SERVER=https://testnet-idx.algonode.cloud`
 - `VITE_NETWORK=testnet`
@@ -367,7 +367,7 @@ From `.env`:
 1. Open app, connect **Pera**.
 2. If prompted, click **Opt-in**.
 3. Open the **Lora tx link** and show:
-   - app id is `758024719`
+   - app id is `758809030`
    - note JSON is readable (Protocol Explorer also shows pretty JSON)
 
 ### Segment B — Deposit (30–45s)
