@@ -572,9 +572,31 @@ export default function ProtocolExplorer() {
                                   Note {r.note.arc69 ? '(ARC-69 detected)' : ''}
                                 </p>
                                 {r.note.json ? (
-                                  <pre className="text-[11px] text-gray-800 mt-2 whitespace-pre-wrap break-words font-mono leading-relaxed">
-                                    {JSON.stringify(r.note.json, null, 2)}
-                                  </pre>
+                                  <div className="mt-2 space-y-3">
+                                        {(
+                                          (typeof (r.note.json as any)?.milestone_text === 'string' &&
+                                            String((r.note.json as any).milestone_text).trim().length > 0) ||
+                                          ((r.note.json as any)?.app === 'AlgoVault' &&
+                                            (r.note.json as any)?.type === 'Milestone' &&
+                                            typeof (r.note.json as any)?.milestone === 'string' &&
+                                            String((r.note.json as any).milestone).trim().length > 0)
+                                        ) ? (
+                                          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                                            <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Immutable on-chain milestone</p>
+                                            <p className="text-xs text-emerald-900 mt-1 whitespace-pre-wrap">
+                                              {String(
+                                                (typeof (r.note.json as any)?.milestone_text === 'string' &&
+                                                  String((r.note.json as any).milestone_text).trim().length > 0
+                                                  ? (r.note.json as any).milestone_text
+                                                  : (r.note.json as any).milestone) ?? '',
+                                              )}
+                                            </p>
+                                          </div>
+                                        ) : null}
+                                    <pre className="text-[11px] text-gray-800 whitespace-pre-wrap break-words font-mono leading-relaxed">
+                                      {JSON.stringify(r.note.json, null, 2)}
+                                    </pre>
+                                  </div>
                                 ) : (
                                   <p className="text-xs text-gray-700 mt-1 break-all font-mono">{r.note.utf8 ?? '—'}</p>
                                 )}

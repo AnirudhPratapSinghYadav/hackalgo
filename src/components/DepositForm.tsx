@@ -26,6 +26,7 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo, mile
   const { activeAddress, signTransactions } = useWallet()
 
   const [amount, setAmount] = useState('')
+  const [milestoneText, setMilestoneText] = useState('')
   const [status, setStatus] = useState<'idle' | 'signing' | 'confirming' | 'done' | 'error'>('idle')
   const [txId, setTxId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +49,7 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo, mile
         setStatus('confirming')
         return result
       }
-      const id = await depositToVault(wrappedSign, activeAddress, numAmount)
+      const id = await depositToVault(wrappedSign, activeAddress, numAmount, milestoneText)
       setTxId(id)
       setStatus('done')
       confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } })
@@ -148,6 +149,22 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo, mile
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="mb-5">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Etch Custom Milestone on-chain (Optional)</label>
+                <textarea
+                  value={milestoneText}
+                  onChange={(e) => setMilestoneText(e.target.value)}
+                  placeholder="Example: 'Flood relief reserve activated — April 2026'"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] bg-gray-50/50 transition-all"
+                  rows={3}
+                  maxLength={160}
+                  disabled={busy}
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  This text is written into the transaction <span className="font-mono">note</span> (immutable). Keep it short and public-safe.
+                </p>
               </div>
 
               <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm">

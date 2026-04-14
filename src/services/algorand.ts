@@ -30,6 +30,11 @@ let appInfoCache: { ts: number; promise: Promise<any> } | null = null
 // ARC-4 method selectors computed from signatures to avoid hardcoded drift.
 const SELECTOR_OPT_IN = new algosdk.ABIMethod({ name: 'opt_in', args: [], returns: { type: 'void' } }).getSelector()
 const SELECTOR_DEPOSIT = new algosdk.ABIMethod({ name: 'deposit', args: [{ type: 'pay' }], returns: { type: 'uint64' } }).getSelector()
+const SELECTOR_DEPOSIT_STABLECOIN = new algosdk.ABIMethod({
+  name: 'deposit_stablecoin',
+  args: [{ type: 'axfer' }, { type: 'uint64' }],
+  returns: { type: 'uint64' },
+}).getSelector()
 const SELECTOR_CLAIM_BADGE = new algosdk.ABIMethod({ name: 'claim_badge', args: [{ type: 'uint64' }], returns: { type: 'uint64' } }).getSelector()
 const SELECTOR_WITHDRAW = new algosdk.ABIMethod({ name: 'withdraw', args: [{ type: 'uint64' }, { type: 'address' }], returns: { type: 'void' } }).getSelector()
 const SELECTOR_SETUP_PACT = new algosdk.ABIMethod({
@@ -168,6 +173,22 @@ function encodeTxnRefArg(txnIndex: number): Uint8Array {
 }
 
 function buildActionNote(action: string, fields: Record<string, unknown>): Uint8Array {
+  // Phase 3 requirement: every deposit must carry a Lora-friendly milestone JSON note.
+  if (action === 'deposit' || action === 'deposit_stablecoin') {
+    const milestoneCandidate =
+      (typeof (fields as any).milestone === 'string' ? (fields as any).milestone : undefined) ??
+      (typeof (fields as any).milestone_text === 'string' ? (fields as any).milestone_text : undefined) ??
+      ''
+    const payload = {
+      app: 'AlgoVault',
+      v: 1.0,
+      type: 'Milestone',
+      milestone: String(milestoneCandidate ?? '').trim(),
+      ts: Date.now(),
+    }
+    return new TextEncoder().encode(JSON.stringify(payload))
+  }
+
   const payload = {
     standard: 'algovault',
     action,
@@ -318,12 +339,22 @@ export async function optInToVault(signTransactions: SignTransactionsFn, address
 }
 
 // ATOMIC GROUP: PaymentTxn + AppCallTxn together
-export async function depositToVault(signTransactions: SignTransactionsFn, address: string, amountAlgo: number): Promise<string> {
+export async function depositToVault(
+  signTransactions: SignTransactionsFn,
+  address: string,
+  amountAlgo: number,
+  milestoneText?: string,
+): Promise<string> {
   if (amountAlgo < 1) throw new Error('Minimum 1 ALGO')
   const spBase = await getSuggestedParams()
   const amountMicro = Math.round(amountAlgo * 1_000_000)
   const appAddr = getVaultAppAddress()
-  const note = buildActionNote('deposit', { user: address, amount_micro: amountMicro })
+  const milestone = String(milestoneText ?? '').trim()
+  const note = buildActionNote('deposit', {
+    user: address,
+    amount_micro: amountMicro,
+    ...(milestone ? { milestone_text: milestone } : {}),
+  })
 
   const payTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: address,
@@ -343,6 +374,49 @@ export async function depositToVault(signTransactions: SignTransactionsFn, addre
   })
 
   return await signAndSendGroup(signTransactions, [payTxn, appCallTxn])
+}
+
+/**
+ * ATOMIC GROUP: AssetTransferTxn (ASA) + AppCallTxn (deposit_stablecoin(axfer, asset_id))
+ *
+ * Notes:
+ * - Contract must be configured with `stablecoin_asset_id` and app account must be opted-in to that ASA.
+ * - App call includes foreignAssets so the ASA is "available" to AVM / inner ops.
+ */
+export async function depositStablecoinToVault(
+  signTransactions: SignTransactionsFn,
+  address: string,
+  assetId: number,
+  amountAtomic: number,
+): Promise<string> {
+  if (!Number.isFinite(assetId) || assetId <= 0) throw new Error('Enter a valid ASA asset id.')
+  if (!Number.isFinite(amountAtomic) || amountAtomic <= 0) throw new Error('Amount must be greater than 0.')
+
+  const spBase = await getSuggestedParams()
+  const appAddr = getVaultAppAddress()
+  const amount = Math.round(amountAtomic)
+  const note = buildActionNote('deposit_stablecoin', { user: address, asset_id: assetId, amount_atomic: amount })
+
+  const axferTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: address,
+    to: appAddr,
+    assetIndex: assetId,
+    amount,
+    note,
+    suggestedParams: withFlatFee(spBase, FEE_PAY_DEPOSIT),
+  })
+
+  const appCallTxn = algosdk.makeApplicationNoOpTxnFromObject({
+    from: address,
+    appIndex: APP_ID,
+    // ARC-4 txn arg: reference the axfer txn by index (0)
+    appArgs: [SELECTOR_DEPOSIT_STABLECOIN, encodeTxnRefArg(0), algosdk.encodeUint64(assetId)],
+    foreignAssets: [assetId],
+    note,
+    suggestedParams: withFlatFee(spBase, FEE_APP_DEPOSIT),
+  })
+
+  return await signAndSendGroup(signTransactions, [axferTxn, appCallTxn])
 }
 
 // Withdraw from vault
@@ -412,6 +486,21 @@ export async function getUserStats(address: string): Promise<{
     }
   } catch {
     return { totalSaved: 0, milestone: 0, streak: 0, lastDeposit: 0 }
+  }
+}
+
+export async function getUserStablecoinStats(address: string): Promise<{
+  stablecoinTotal: number
+}> {
+  try {
+    const info = (await getAccountInformationCached(address)) as any
+    const local = (info?.['apps-local-state'] ?? []).find((a: any) => a.id === APP_ID)
+    const kv = local?.['key-value'] ?? []
+    const getEntry = (key: string) => kv.find((x: any) => x.key === btoa(key))?.value
+    const get = (key: string) => decodeStateValue(getEntry(key))
+    return { stablecoinTotal: get('user_stablecoin_total') }
+  } catch {
+    return { stablecoinTotal: 0 }
   }
 }
 

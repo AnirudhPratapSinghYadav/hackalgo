@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "agent:telegram": "tsx scripts/telegram_agent.ts",
+    "agent:whatsapp": "tsx scripts/whatsapp_agent.ts",
+    "agent:service": "tsx scripts/agent_service.ts"
   },
   "dependencies": {
     "@algorandfoundation/algokit-utils": "^6.0.0",
@@ -16,10 +19,16 @@
     "@walletconnect/modal": "^2.7.0",
     "@walletconnect/sign-client": "^2.23.9",
     "@walletconnect/types": "^2.23.9",
+    "@google/generative-ai": "^0.24.1",
     "algosdk": "^2.9.0",
     "canvas-confetti": "^1.9.4",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "body-parser": "^1.20.3",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
+    "node-telegram-bot-api": "^0.66.0",
+    "twilio": "^5.9.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-is": "^18.2.0",
@@ -28,6 +37,9 @@
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",
+    "@types/node-telegram-bot-api": "^0.64.10",
+    "@types/express": "^5.0.3",
+    "@types/body-parser": "^1.19.6",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@types/recharts": "^1.8.29",
@@ -35,6 +47,7 @@
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.3.3",
     "vite": "^5.0.8"
   }
