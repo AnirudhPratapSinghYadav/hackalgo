@@ -59,6 +59,7 @@ Create `.env` (or configure Vercel env vars) with:
 - `VITE_ALGOD_SERVER`, `VITE_ALGOD_PORT`, `VITE_ALGOD_TOKEN`
 - `VITE_INDEXER_SERVER`, `VITE_INDEXER_PORT`
 - `VITE_GEMINI_API_KEY` (optional; UI falls back gracefully without it)
+- `VITE_AGENT_BASE_URL` (recommended; e.g. `https://<your-backend-domain>`)
 
 Important:
 - **Do not set** `VITE_APP_ADDRESS`. The app address is always derived from the App ID.
@@ -74,6 +75,93 @@ npm run dev
 ```bash
 npm run build
 ```
+
+---
+
+## Guardian AI Agent (Telegram + WhatsApp) — `scripts/agent_service.ts`
+
+This repo includes a production-style “Guardian” agent service:
+- **Telegram**: polling bot
+- **WhatsApp**: Twilio webhook (`POST /whatsapp`)
+- **Gemini**: crisis verification + structured brief output
+- **Algorand**: reads vault balances + (when applicable) triggers `agentic_release()` securely
+- **Lora**: proof links for verification (tx/app/account)
+
+### Run locally
+
+```bash
+npm run agent:service
+```
+
+Health endpoints (used by the UI):
+- `GET http://localhost:3000/api/agent-status`
+- `GET http://localhost:3000/api/audit-log`
+
+### Agent env vars (backend)
+
+Put these in the backend environment (local `.env` or Render/Railway):
+- `TELEGRAM_BOT_TOKEN`
+- `GEMINI_API_KEY`
+- `AGENT_MNEMONIC`
+- `APP_ID`
+- `ALGOD_SERVER` (default: AlgoNode TestNet)
+- `ALGOD_PORT` (default: `443`)
+- `ALGOD_TOKEN` (often empty for AlgoNode)
+- `PORT` (default: `3000`)
+
+---
+
+## WhatsApp Notes (Twilio) — why it “may not work”
+
+WhatsApp support is real, but it has **external constraints** that can make it look “broken” even when your code is correct.
+
+### Common reasons WhatsApp fails
+- **Twilio Sandbox vs Production**:
+  - Sandbox requires users to **join** the sandbox first.
+  - Production requires your WhatsApp sender/profile to be **approved**.
+- **Webhook URL mismatch**:
+  - Twilio must be configured to send inbound messages to your server:
+    - `https://<your-backend-domain>/whatsapp`
+  - If you restart ngrok / change domains and don’t update Twilio, messages go to the old URL.
+- **Templates / interactive messages**:
+  - “Buttons” in WhatsApp are not free-form like Telegram.
+  - Interactive buttons typically require approved templates and specific Twilio APIs.
+
+### What we support reliably (recommended)
+- **Clickable payment links** (e.g. `algorand://...`) and proof links (Lora URLs).
+- A “one-tap” experience on WhatsApp is best-effort via deep links; true in-chat buttons depend on Twilio/WhatsApp configuration.
+
+### Best UX: Telegram for buttons, WhatsApp for reach
+- Telegram supports an inline **button** (URL) that opens the Algorand payment link.
+- WhatsApp is kept simple and robust: clear text + links.
+
+---
+
+## Hosting (recommended)
+
+### Frontend on Vercel
+1. Import the GitHub repo into Vercel
+2. Set env vars:
+   - `VITE_APP_ID`
+   - `VITE_NETWORK=testnet`
+   - `VITE_ALGOD_SERVER`, `VITE_ALGOD_PORT`, `VITE_ALGOD_TOKEN`
+   - `VITE_INDEXER_SERVER`, `VITE_INDEXER_PORT`
+   - `VITE_GEMINI_API_KEY` (optional)
+   - `VITE_AGENT_BASE_URL=https://<your-backend-domain>` (recommended)
+3. Deploy
+
+### Backend agent on Render / Railway / Fly
+1. Deploy a Node service that runs:
+   - `npm install`
+   - `npm run agent:service`
+2. Set env vars listed in “Agent env vars (backend)”
+3. Confirm it’s live:
+   - `GET https://<your-backend-domain>/api/agent-status`
+4. Configure Twilio WhatsApp webhook:
+   - `POST https://<your-backend-domain>/whatsapp`
+
+Important:
+- **Lora is not backend hosting**. Lora is used for proof/verification links.
 
 ---
 
