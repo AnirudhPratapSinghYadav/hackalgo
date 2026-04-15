@@ -363,8 +363,22 @@ function getEnvNumber(name: string, fallback?: number): number {
   return n
 }
 
-function loraTxUrl(txId: string): string {
-  return `https://lora.algorand.foundation/transaction/${txId}`
+function loraBaseUrl(): string {
+  // Old domain lora.algorand.foundation is no longer reliable for some users (DNS/NXDOMAIN).
+  // AlgoKit Lora canonical host:
+  // https://dev.algorand.co/algokit/lora/overview
+  return String(process.env.LORA_BASE_URL ?? 'https://lora.algokit.io').replace(/\/+$/, '')
+}
+
+function loraNetworkSegment(network?: string): string {
+  const n = String(network ?? '').trim().toLowerCase()
+  if (n.includes('main')) return 'mainnet'
+  if (n.includes('local')) return 'localnet'
+  return 'testnet'
+}
+
+function loraTxUrl(txId: string, network?: string): string {
+  return `${loraBaseUrl()}/${loraNetworkSegment(network)}/transaction/${txId}`
 }
 
 function looksLikeAlgorandTxId(s: string): boolean {
@@ -383,12 +397,12 @@ function extractTxId(raw: string): string | null {
   return null
 }
 
-function loraAccountUrl(address: string): string {
-  return `https://lora.algorand.foundation/account/${address}`
+function loraAccountUrl(address: string, network?: string): string {
+  return `${loraBaseUrl()}/${loraNetworkSegment(network)}/account/${address}`
 }
 
-function loraAppUrl(appId: number): string {
-  return `https://lora.algorand.foundation/application/${appId}`
+function loraAppUrl(appId: number, network?: string): string {
+  return `${loraBaseUrl()}/${loraNetworkSegment(network)}/application/${appId}`
 }
 
 async function getAlgoBalance(deps: { algodClient: algosdk.Algodv2 }, address: string): Promise<number> {
@@ -458,9 +472,9 @@ function formatPremiumVaultSheet(params: {
   lines.push('🔍 Proof (Algorand / Lora)')
   // Put URLs on their own lines so WhatsApp/Telegram auto-linking never breaks.
   lines.push('Vault App (Lora):')
-  lines.push(loraAppUrl(vaultAppId))
+  lines.push(loraAppUrl(vaultAppId, process.env.VITE_NETWORK ?? process.env.NETWORK ?? 'testnet'))
   lines.push('Vault Address (Lora):')
-  lines.push(loraAccountUrl(vaultAddress))
+  lines.push(loraAccountUrl(vaultAddress, process.env.VITE_NETWORK ?? process.env.NETWORK ?? 'testnet'))
   lines.push('')
   lines.push('✅ How to contribute (safe)')
   lines.push('- Open the AlgoVault dashboard → Deposit')
@@ -471,7 +485,7 @@ function formatPremiumVaultSheet(params: {
     lines.push('')
     lines.push('🛰️ Guardian service health (optional)')
     lines.push('Agent Address (Lora):')
-    lines.push(loraAccountUrl(agentAddress))
+    lines.push(loraAccountUrl(agentAddress, process.env.VITE_NETWORK ?? process.env.NETWORK ?? 'testnet'))
     if (typeof agentBalanceAlgo === 'number') lines.push(`- Agent balance: ${formatAlgo(agentBalanceAlgo)}`)
     lines.push('Tip: If the agent is low on fees, use `/fund` to top it up.')
   }
@@ -621,9 +635,9 @@ async function processEmergency(userId: string, message: string, deps: {
       'Every contribution and smart contract action is recorded transparently on **Algorand** and can be independently audited.',
       '',
       `- App (Vault) ID: ${deps.appId}`,
-      `- App on Lora: ${loraAppUrl(deps.appId)}`,
+      `- App on Lora: ${loraAppUrl(deps.appId, deps.network)}`,
       `- App address (holds funds): ${appAddr}`,
-      `- App address on Lora: ${loraAccountUrl(appAddr)}`,
+      `- App address on Lora: ${loraAccountUrl(appAddr, deps.network)}`,
       '',
       'If you share a **TxID**, I can explain exactly what happened and what it means.',
     ].join('\n')
@@ -703,7 +717,7 @@ async function processEmergency(userId: string, message: string, deps: {
         `Vault App ID: ${deps.appId}`,
         `Balance (on-chain): ${balAlgo.toFixed(6)} ALGO`,
         '',
-        `View on Lora: ${loraAppUrl(deps.appId)}`,
+        `View on Lora: ${loraAppUrl(deps.appId, deps.network)}`,
       ].join('\n')
     } catch {
       return 'Vault status unavailable right now.'
@@ -871,7 +885,7 @@ async function processEmergency(userId: string, message: string, deps: {
       '🧾 **Verification Receipt (Algorand)**',
       '',
       `TxID: ${maybeTxId}`,
-      `Lora proof: ${loraTxUrl(maybeTxId)}`,
+      `Lora proof: ${loraTxUrl(maybeTxId, deps.network)}`,
       '',
       'What to check on Lora:',
       '- Confirm sender/receiver addresses',
@@ -962,7 +976,7 @@ async function processEmergency(userId: string, message: string, deps: {
     })
     pushAudit(`[${new Date().toLocaleTimeString()}] ✅ CONFIRMED: ${txId}`)
     pushAudit(`[${new Date().toLocaleTimeString()}] ✅ Decision Made: RELEASE 100%`)
-    return `${aiText}\n\n✅ Release executed.\n${loraTxUrl(txId)}`
+    return `${aiText}\n\n✅ Release executed.\n${loraTxUrl(txId, deps.network)}`
   } catch (e) {
     pushAudit(`[${new Date().toLocaleTimeString()}] ❌ SMART CONTRACT: failed`)
     return humanizeChainError(e, { agentAddress: deps.agentAddress, network: deps.network })
