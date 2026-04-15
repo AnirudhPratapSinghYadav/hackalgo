@@ -5,6 +5,7 @@ import type { ReportData } from './reportData'
 export async function downloadReportPdf(data: ReportData, chartContainerId: string): Promise<void> {
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
   const pageW = pdf.internal.pageSize.getWidth()
+  const pageH = pdf.internal.pageSize.getHeight()
   const margin = 40
   const contentW = pageW - margin * 2
   let y = margin
@@ -57,30 +58,63 @@ export async function downloadReportPdf(data: ReportData, chartContainerId: stri
   const chartEl = document.getElementById(chartContainerId)
   if (chartEl) {
     try {
-      const canvas = await html2canvas(chartEl, { backgroundColor: '#ffffff', scale: 1.5, useCORS: true })
-      const imgData = canvas.toDataURL('image/png')
-      const imgW = contentW
-      const imgH = (canvas.height / canvas.width) * imgW
+      // Render each chart card individually for higher clarity in the PDF.
+      const chartCards = Array.from(chartEl.querySelectorAll('div.rounded-2xl')) as HTMLElement[]
+      if (chartCards.length > 0) {
+        pdf.setFontSize(12)
+        pdf.setFont('helvetica', 'bold')
+        pdf.setTextColor(30, 30, 30)
+        pdf.text('Charts', margin, y)
+        y += 16
 
-      if (y + imgH > pdf.internal.pageSize.getHeight() - margin) {
-        pdf.addPage()
-        y = margin
+        for (const card of chartCards) {
+          const canvas = await html2canvas(card, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true,
+            scrollY: -window.scrollY,
+          })
+          const imgData = canvas.toDataURL('image/png')
+          const imgW = contentW
+          const imgH = (canvas.height / canvas.width) * imgW
+
+          if (y + imgH > pageH - margin) {
+            pdf.addPage()
+            y = margin
+          }
+
+          pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST')
+          y += imgH + 14
+        }
+
+        y += 2
+      } else {
+        // Fallback: render the whole chart container
+        const canvas = await html2canvas(chartEl, { backgroundColor: '#ffffff', scale: 2, useCORS: true, scrollY: -window.scrollY })
+        const imgData = canvas.toDataURL('image/png')
+        const imgW = contentW
+        const imgH = (canvas.height / canvas.width) * imgW
+
+        if (y + imgH > pageH - margin) {
+          pdf.addPage()
+          y = margin
+        }
+
+        pdf.setFontSize(12)
+        pdf.setFont('helvetica', 'bold')
+        pdf.setTextColor(30, 30, 30)
+        pdf.text('Charts', margin, y)
+        y += 16
+
+        pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST')
+        y += imgH + 16
       }
-
-      pdf.setFontSize(12)
-      pdf.setFont('helvetica', 'bold')
-      pdf.setTextColor(30, 30, 30)
-      pdf.text('Charts', margin, y)
-      y += 16
-
-      pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST')
-      y += imgH + 16
     } catch {
       // charts render failed, skip gracefully
     }
   }
 
-  if (y + 30 > pdf.internal.pageSize.getHeight() - margin) {
+  if (y + 30 > pageH - margin) {
     pdf.addPage()
     y = margin
   }

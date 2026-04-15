@@ -9,7 +9,17 @@ interface Props {
 
 export default function QRClaimCard({ vaultName, purpose, goalAlgo, savedAlgo, appId, onClose }: Props) {
   const progressPct = goalAlgo > 0 ? Math.min(100, (savedAlgo / goalAlgo) * 100) : 0
-  const qrData = encodeURIComponent(`AlgoVault Guardian | ${vaultName} | App: ${appId} | Goal: ${goalAlgo} ALGO`)
+  // QR should be usable for *verification*. Embed a Lora app link + human-readable fields.
+  const loraAppUrl = `https://lora.algokit.io/testnet/application/${appId}`
+  const qrPayload = [
+    `AlgoVault Guardian Vault`,
+    `Vault: ${vaultName}`,
+    `Purpose: ${purpose}`,
+    `App ID: ${appId}`,
+    `Verify: ${loraAppUrl}`,
+    goalAlgo > 0 ? `Goal: ${goalAlgo} ALGO` : '',
+  ].filter(Boolean).join(' | ')
+  const qrData = encodeURIComponent(qrPayload)
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrData}&bgcolor=ffffff&color=1e1b4b`
 
   const handlePrint = () => {

@@ -40,6 +40,7 @@ function TransactionHistory({ address }: Props) {
   const [txns, setTxns] = useState<Txn[]>([])
   const [loading, setLoading] = useState(true)
   const [openGroup, setOpenGroup] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
 
   const fetchHistory = useCallback(() => {
     setLoading(true)
@@ -66,6 +67,14 @@ function TransactionHistory({ address }: Props) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-400 font-medium">{txns.length} transactions</span>
+          {txns.length > 8 && (
+            <button
+              onClick={() => setShowAll((v) => !v)}
+              className="text-xs font-semibold text-gray-700 hover:text-gray-900 hover:underline"
+            >
+              {showAll ? 'Show first 8' : 'Show all'}
+            </button>
+          )}
           <button onClick={fetchHistory} className="text-xs font-semibold text-[#2563EB] hover:underline">
             Refresh
           </button>
@@ -151,7 +160,7 @@ function TransactionHistory({ address }: Props) {
               </tr>
             </thead>
             <tbody>
-              {txns.map((t) => {
+              {(showAll ? txns : txns.slice(0, 8)).map((t) => {
                 const style = txStyle(t.action, t.type)
                 return (
                   <tr key={t.txId} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/60 transition-colors">

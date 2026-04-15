@@ -1,15 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useWallet } from '@txnlab/use-wallet-react'
 import {
   getBalance,
   getUserStats,
-  getUserStablecoinStats,
   getGlobalStats,
   isOptedIn,
   optInToVault,
-  depositStablecoinToVault,
-  getExplorerTransactionUrl,
+  getExplorerAccountUrl,
+  getExplorerApplicationUrl,
 } from '../services/algorand'
 import DepositForm from '../components/DepositForm'
 import WithdrawForm from '../components/WithdrawForm'
@@ -30,10 +29,16 @@ const BADGE_LEVEL_NAME: Record<number, string> = {
 export default function Dashboard() {
   const { activeAddress, wallets, signTransactions } = useWallet()
   const navigate = useNavigate()
+  const profileRef = useRef<HTMLDivElement | null>(null)
+  const journeyRef = useRef<HTMLDivElement | null>(null)
 
   const whatsappNumberRaw = String((import.meta as any).env?.VITE_TWILIO_WHATSAPP_NUMBER ?? '').trim()
   const whatsappDigits = whatsappNumberRaw.replace(/^whatsapp:/i, '').replace(/\D/g, '')
   const telegramBotUsername = String((import.meta as any).env?.VITE_TELEGRAM_BOT_USERNAME ?? '').trim().replace(/^@/, '')
+  const telegramUrl = telegramBotUsername ? `https://t.me/${telegramBotUsername}?start=guardian` : ''
+  const whatsappUrl = whatsappDigits
+    ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent('Hi AlgoVault Guardian')}`
+    : ''
 
   const [balance, setBalance] = useState('...')
   const [dataLoading, setDataLoading] = useState(true)
@@ -44,8 +49,8 @@ export default function Dashboard() {
   const [optedIn, setOptedIn] = useState<boolean | null>(null)
   const [optingIn, setOptingIn] = useState(false)
   const [showDeposit, setShowDeposit] = useState(false)
+  const [depositFocusMilestone, setDepositFocusMilestone] = useState(false)
   const [showWithdraw, setShowWithdraw] = useState(false)
-  const [showStableDeposit, setShowStableDeposit] = useState(false)
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [summaryVault, setSummaryVault] = useState<VaultSummaryType>('personal')
   const [summaryText, setSummaryText] = useState<string>('')
@@ -53,12 +58,11 @@ export default function Dashboard() {
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [mode, setMode] = useState<'legacy_minimal' | 'full_pack' | null>(null)
   const [optInError, setOptInError] = useState<string | null>(null)
-  const [stablecoin, setStablecoin] = useState<{ total: number } | null>(null)
-  const [stableDepositAssetId, setStableDepositAssetId] = useState('10458941')
-  const [stableDepositAmount, setStableDepositAmount] = useState('')
-  const [stableDepositBusy, setStableDepositBusy] = useState(false)
-  const [stableDepositError, setStableDepositError] = useState<string | null>(null)
-  const [stableDepositTx, setStableDepositTx] = useState<string | null>(null)
+
+  const [agentStatus, setAgentStatus] = useState<{ address: string; balance: number; status: string } | null>(null)
+  const [agentStatusError, setAgentStatusError] = useState<string | null>(null)
+  const [journeyFlash, setJourneyFlash] = useState(false)
+
 
   const activeWallet = wallets?.find((w) => w.isActive) ?? wallets?.find((w) => w.isConnected)
 
@@ -66,12 +70,11 @@ export default function Dashboard() {
     if (!activeAddress) return
     setDataLoading(true)
     try {
-      const [bal, stats, opted, global, st] = await Promise.all([
+      const [bal, stats, opted, global] = await Promise.all([
         getBalance(activeAddress),
         getUserStats(activeAddress),
         isOptedIn(activeAddress),
         getGlobalStats(),
-        getUserStablecoinStats(activeAddress),
       ])
       setBalance(bal)
       setUserStats(stats)
@@ -79,11 +82,9 @@ export default function Dashboard() {
       setGlobalStats({ totalDeposited: global.totalDeposited, totalUsers: global.totalUsers })
       setMilestones(global.milestones)
       setMilestoneError(null)
-      setStablecoin({ total: st.stablecoinTotal })
     } catch (e: any) {
       setMilestoneError(e?.message ?? 'Failed to load on-chain state.')
       setMilestones(null)
-      setStablecoin(null)
     } finally {
       setDataLoading(false)
     }
@@ -97,6 +98,45 @@ export default function Dashboard() {
     getContractMode().then(setMode).catch(() => setMode('legacy_minimal'))
   }, [])
 
+  const agentBaseUrl =
+    String((import.meta as any).env?.VITE_AGENT_BASE_URL ?? '').trim() ||
+    (typeof window !== 'undefined' ? `http://${window.location.hostname}:3000` : 'http://localhost:3000')
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      try {
+        const res = await fetch(`${agentBaseUrl}/api/agent-status`)
+        if (!res.ok) throw new Error(`status ${res.status}`)
+        const json = await res.json()
+        if (!cancelled) {
+          setAgentStatus({
+            address: String(json?.address ?? ''),
+            balance: Number(json?.balance ?? 0),
+            status: String(json?.status ?? 'Online'),
+          })
+          setAgentStatusError(null)
+        }
+      } catch (e: any) {
+        if (!cancelled) setAgentStatusError(String(e?.message ?? e))
+      }
+    }
+    run()
+    const t = window.setInterval(run, 12_000)
+    return () => { cancelled = true; window.clearInterval(t) }
+  }, [])
+
+  const [profileOpen, setProfileOpen] = useState(false)
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (!profileOpen) return
+      const target = e.target as Node | null
+      if (profileRef.current && target && !profileRef.current.contains(target)) setProfileOpen(false)
+    }
+    window.addEventListener('mousedown', onDown)
+    return () => window.removeEventListener('mousedown', onDown)
+  }, [profileOpen])
+
   if (!activeAddress) return <Navigate to="/" replace />
 
   const disconnect = () => {
@@ -109,7 +149,6 @@ export default function Dashboard() {
   const globalAlgo = globalStats.totalDeposited / 1_000_000
   const milestonesAlgo = milestones ? [milestones.m1, milestones.m2, milestones.m3].map((m) => m / 1_000_000) : null
 
-  const stablecoinAtomic = stablecoin?.total ?? 0
   const journeyMilestones = useMemo(() => {
     if (!milestonesAlgo) return null
     return [
@@ -163,7 +202,15 @@ export default function Dashboard() {
       refreshData()
     } catch (e: any) {
       console.error('Opt-in failed:', e)
-      setOptInError(e?.message || 'Opt-in failed. Please try again.')
+      const msg = String(e?.message ?? '')
+      // If the wallet/account is already opted-in, treat as success and refresh state.
+      if (msg.toLowerCase().includes('already opted in')) {
+        setOptedIn(true)
+        setOptInError(null)
+        refreshData()
+        return
+      }
+      setOptInError(msg || 'Opt-in failed. Please try again.')
     } finally {
       setOptingIn(false)
     }
@@ -280,16 +327,94 @@ export default function Dashboard() {
             <span className="font-bold text-lg text-gray-900 tracking-tight">AlgoVault</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Testnet
-            </div>
-            <div className="text-sm font-mono text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">{truncated}</div>
-            <div className="text-sm font-semibold text-gray-900 hidden sm:block">{balance} <span className="text-gray-400 font-normal">ALGO</span></div>
-            <button onClick={disconnect} className="ml-1 text-gray-400 hover:text-red-500 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          {/* PROFILE (minimal chip → dropdown) */}
+          <div className="relative" ref={profileRef}>
+            <button
+              type="button"
+              onClick={() => setProfileOpen((v) => !v)}
+              className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-white px-3.5 py-2 hover:bg-gray-50 transition-all"
+              aria-haspopup="menu"
+              aria-expanded={profileOpen}
+            >
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {String(import.meta.env.VITE_NETWORK ?? 'testnet').toLowerCase() === 'mainnet' ? 'Mainnet' : 'Testnet'}
+              </span>
+              <span className="text-sm font-mono text-gray-700">{truncated}</span>
+              <svg className={`w-4 h-4 text-gray-400 transition-transform ${profileOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
+
+            {profileOpen && (
+              <div className="absolute right-0 mt-2 w-[320px] rounded-2xl border border-gray-100 bg-white shadow-xl overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-gray-50">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Profile</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-1">{balance} <span className="text-gray-400 font-normal">ALGO</span></p>
+                  <p className="text-xs font-mono text-gray-500 mt-1 break-all">{activeAddress}</p>
+                </div>
+
+                <div className="px-2 py-2">
+                  <a
+                    className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-gray-50 text-sm"
+                    href={getExplorerAccountUrl(activeAddress)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span className="text-gray-700 font-semibold">View wallet on Lora</span>
+                    <span className="text-gray-400 text-xs font-mono">account</span>
+                  </a>
+                  <a
+                    className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-gray-50 text-sm"
+                    href={getExplorerApplicationUrl(Number(import.meta.env.VITE_APP_ID))}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span className="text-gray-700 font-semibold">View app on Lora</span>
+                    <span className="text-gray-400 text-xs font-mono">app {Number(import.meta.env.VITE_APP_ID)}</span>
+                  </a>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-gray-50 text-sm"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(activeAddress)
+                      } catch {
+                        // ignore
+                      }
+                      setProfileOpen(false)
+                    }}
+                  >
+                    <span className="text-gray-700 font-semibold">Copy address</span>
+                    <span className="text-gray-400 text-xs font-mono">copy</span>
+                  </button>
+                </div>
+
+                <div className="px-4 py-3 border-t border-gray-50 bg-gray-50 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDepositFocusMilestone(true)
+                      setShowDeposit(true)
+                      setProfileOpen(false)
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white text-sm font-semibold hover:from-[#1d4ed8] hover:to-[#1e40af] transition-all"
+                  >
+                    Create milestone
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setProfileOpen(false); disconnect() }}
+                    className="py-2.5 px-3 rounded-xl border border-gray-200 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-100 transition-all"
+                    aria-label="Disconnect"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </nav>
@@ -413,12 +538,29 @@ export default function Dashboard() {
             <p className="text-xs text-gray-500 mt-1">This app does not use hardcoded milestone values.</p>
           </div>
         ) : (
-          <ProgressJourney
-            savedAlgo={savedAlgo}
-            currentMilestone={userStats.milestone}
-            variant="personal"
-            milestones={journeyMilestones!}
-          />
+          <div className="relative">
+            <div className="absolute right-4 top-3 sm:right-6 sm:top-4 z-10">
+              <button
+                type="button"
+                onClick={() => { setDepositFocusMilestone(true); setShowDeposit(true) }}
+                disabled={optedIn === false}
+                className="px-4 py-2 rounded-xl text-white text-xs sm:text-sm font-extrabold border border-emerald-300/40 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-900/30 transition-all disabled:opacity-50 disabled:saturate-0 disabled:brightness-75"
+              >
+                Create milestone
+              </button>
+            </div>
+            <div
+              ref={journeyRef}
+              className={`pt-10 sm:pt-12 transition-all ${journeyFlash ? 'ring-2 ring-emerald-400/50 rounded-2xl shadow-[0_0_0_6px_rgba(16,185,129,0.08)]' : ''}`}
+            >
+              <ProgressJourney
+                savedAlgo={savedAlgo}
+                currentMilestone={userStats.milestone}
+                variant="personal"
+                milestones={journeyMilestones!}
+              />
+            </div>
+          </div>
         )}
 
         {/* SAVINGS QUEST */}
@@ -471,20 +613,22 @@ export default function Dashboard() {
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Guardian Portal</p>
-              <p className="text-lg font-extrabold text-gray-900 tracking-tight mt-1">Multi-channel emergency trigger</p>
+              <p className="text-lg font-extrabold text-gray-900 tracking-tight mt-1">Omnichannel emergency trigger</p>
               <p className="text-xs text-gray-500 mt-1">
-                Use WhatsApp/Telegram to message the Guardian AI. If it verifies a real disaster using live web sources, it can trigger <span className="font-mono">agentic_release()</span>.
+                Message the Guardian AI on WhatsApp or Telegram. If it verifies a real disaster using live web sources, it can trigger <span className="font-mono">agentic_release()</span>.
               </p>
             </div>
             <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end">
-              <a
-                href={whatsappDigits ? `https://wa.me/${whatsappDigits}` : undefined}
-                target="_blank"
-                rel="noreferrer"
-                aria-disabled={!whatsappDigits}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!whatsappUrl) return
+                  window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
+                }}
+                disabled={!whatsappUrl}
                 className={[
                   'flex items-center justify-center gap-3 rounded-2xl px-6 py-4 font-bold transition-all',
-                  whatsappDigits
+                  whatsappUrl
                     ? 'bg-[#25D366] text-white hover:brightness-95 shadow-sm hover:shadow-md'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed',
                 ].join(' ')}
@@ -494,16 +638,18 @@ export default function Dashboard() {
                   <path d="M16 3C8.82 3 3 8.67 3 15.67c0 2.2.6 4.25 1.66 6.03L3 29l7.55-1.98c1.72.92 3.7 1.45 5.45 1.45 7.18 0 13-5.67 13-12.67C29 8.67 23.18 3 16 3zm0 22.34c-1.62 0-3.5-.53-5.05-1.49l-.36-.21-4.48 1.17 1.2-4.23-.23-.4c-1-1.67-1.55-3.55-1.55-5.52C5.53 9.9 10.34 5.47 16 5.47c5.66 0 10.47 4.43 10.47 10.2S21.66 25.34 16 25.34z" />
                 </svg>
                 WhatsApp Guardian
-              </a>
+              </button>
 
-              <a
-                href={telegramBotUsername ? `https://t.me/${telegramBotUsername}` : undefined}
-                target="_blank"
-                rel="noreferrer"
-                aria-disabled={!telegramBotUsername}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!telegramUrl) return
+                  window.open(telegramUrl, '_blank', 'noopener,noreferrer')
+                }}
+                disabled={!telegramUrl}
                 className={[
                   'flex items-center justify-center gap-3 rounded-2xl px-6 py-4 font-bold transition-all',
-                  telegramBotUsername
+                  telegramUrl
                     ? 'bg-[#229ED9] text-white hover:brightness-95 shadow-sm hover:shadow-md'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed',
                 ].join(' ')}
@@ -512,7 +658,69 @@ export default function Dashboard() {
                   <path d="M9.04 15.47l-.38 5.33c.55 0 .79-.24 1.08-.53l2.58-2.45 5.35 3.93c.98.54 1.68.26 1.93-.91l3.5-16.41c.32-1.49-.54-2.07-1.5-1.72L1.61 9.62c-1.43.55-1.41 1.34-.26 1.7l5.07 1.58L18.1 5.79c.55-.36 1.05-.16.64.2" />
                 </svg>
                 Telegram Guardian
-              </a>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* GUARDIAN AGENT STATUS */}
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 card-shadow">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Guardian Agent Status</p>
+              <p className="text-sm font-semibold text-gray-900 mt-1">Live on-chain wallet health</p>
+              <p className="text-xs text-gray-500 mt-1">
+                This reads the agent wallet balance from the running Guardian service on <span className="font-mono">localhost:3000</span>.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.open('https://bank.testnet.algorand.network/', '_blank', 'noopener,noreferrer')}
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-extrabold hover:brightness-95 shadow-sm hover:shadow-md transition-all"
+            >
+              Deposit Gas (Testnet)
+            </button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</p>
+              <p className="text-sm font-extrabold text-emerald-700 mt-1">🟢 {agentStatus?.status ?? 'Online'}</p>
+            </div>
+
+            <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Wallet Balance</p>
+              <p className={`text-sm font-extrabold mt-1 ${typeof agentStatus?.balance === 'number' && agentStatus.balance < 0.1 ? 'text-red-600' : 'text-gray-900'}`}>
+                {agentStatus ? `${agentStatus.balance.toFixed(4)} ALGO` : '—'}
+              </p>
+              {agentStatusError && <p className="text-[10px] text-red-600 mt-1">Failed to refresh: {agentStatusError}</p>}
+            </div>
+
+            <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Address</p>
+              <p className="text-sm font-mono text-gray-900 mt-1">
+                {agentStatus?.address
+                  ? `${agentStatus.address.slice(0, 8)}...${agentStatus.address.slice(-6)}`
+                  : '—'}
+              </p>
+              {agentStatus?.address ? (
+                <div className="mt-2 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => window.open(getExplorerAccountUrl(agentStatus.address), '_blank', 'noopener,noreferrer')}
+                    className="text-[11px] font-semibold text-[#2563EB] hover:underline"
+                  >
+                    View on Lora
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard.writeText(agentStatus.address)}
+                    className="text-[11px] font-semibold text-gray-600 hover:underline"
+                  >
+                    Copy
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -527,36 +735,12 @@ export default function Dashboard() {
             Deposit ALGO
           </button>
           <button
-            onClick={() => { setStableDepositError(null); setStableDepositTx(null); setShowStableDeposit(true) }}
-            disabled={optedIn === false}
-            className="px-6 py-3.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-sm font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
-          >
-            Deposit USDC (Testnet)
-          </button>
-          <button
             onClick={() => setShowWithdraw(true)}
             disabled={optedIn === false || userStats.totalSaved === 0}
             className="px-6 py-3.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
           >
             Withdraw
           </button>
-        </div>
-
-        {/* STABLECOIN STATUS */}
-        <div className="rounded-2xl border border-emerald-100 bg-white p-5 card-shadow">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Stablecoin rail</p>
-              <p className="text-sm font-semibold text-gray-900 mt-1">Your stablecoin deposits (atomic units)</p>
-              <p className="text-xs text-gray-500 mt-1">
-                This is read from on-chain local state key <span className="font-mono">user_stablecoin_total</span>. Decimals depend on the ASA.
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-extrabold text-gray-900">{dataLoading ? '—' : String(stablecoinAtomic)}</p>
-              <p className="text-[11px] text-gray-400">atomic units</p>
-            </div>
-          </div>
         </div>
 
         {/* BEHAVIORAL TOOLS — Secondary navigation */}
@@ -641,7 +825,16 @@ export default function Dashboard() {
           currentSavedAlgo={savedAlgo}
           milestonesAlgo={milestonesAlgo ? { m1: milestonesAlgo[0], m2: milestonesAlgo[1], m3: milestonesAlgo[2] } : null}
           onClose={() => setShowDeposit(false)}
-          onSuccess={() => { setShowDeposit(false); refreshData() }}
+          onSuccess={async () => {
+            setShowDeposit(false)
+            setDepositFocusMilestone(false)
+            await refreshData()
+            // "Directly taken into the progress bar": scroll + spotlight
+            journeyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            setJourneyFlash(true)
+            window.setTimeout(() => setJourneyFlash(false), 900)
+          }}
+          autoFocusMilestone={depositFocusMilestone}
         />
       )}
 
@@ -651,100 +844,6 @@ export default function Dashboard() {
           onClose={() => setShowWithdraw(false)}
           onSuccess={() => { setShowWithdraw(false); refreshData() }}
         />
-      )}
-
-      {showStableDeposit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowStableDeposit(false)}>
-          <div
-            className="bg-white rounded-2xl w-full max-w-md mx-4 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-            style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)' }}
-          >
-            <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Stablecoin</p>
-                  <h3 className="text-lg font-extrabold text-gray-900 tracking-tight">Deposit USDC (Testnet)</h3>
-                </div>
-              </div>
-              <button onClick={() => setShowStableDeposit(false)} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors" disabled={stableDepositBusy}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            <div className="px-6 py-6 space-y-4">
-              <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-800">
-                This sends an <span className="font-mono">axfer</span> + <span className="font-mono">appl</span> in one atomic group to <span className="font-mono">deposit_stablecoin(axfer, asset_id)</span>.
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">ASA Asset ID (TestNet USDC)</label>
-                <input
-                  value={stableDepositAssetId}
-                  onChange={(e) => setStableDepositAssetId(e.target.value)}
-                  placeholder="10458941"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-mono bg-gray-50/50 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  disabled={stableDepositBusy}
-                  readOnly
-                />
-                <p className="text-[11px] text-gray-500 mt-1">
-                  Hardcoded to TestNet USDC asset id <span className="font-mono">10458941</span>.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Amount (atomic units)</label>
-                <input
-                  value={stableDepositAmount}
-                  onChange={(e) => setStableDepositAmount(e.target.value)}
-                  placeholder="Example: 1000000 (depends on ASA decimals)"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-mono bg-gray-50/50 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  disabled={stableDepositBusy}
-                />
-              </div>
-
-              {stableDepositError && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {stableDepositError}
-                </div>
-              )}
-
-              {stableDepositTx && (
-                <a className="inline-flex items-center gap-1.5 text-sm text-emerald-700 font-semibold hover:underline" href={getExplorerTransactionUrl(stableDepositTx)} target="_blank" rel="noreferrer">
-                  View transaction on Lora Explorer
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                </a>
-              )}
-
-              <button
-                disabled={stableDepositBusy || optedIn === false}
-                onClick={async () => {
-                  if (!activeAddress) return
-                  setStableDepositBusy(true)
-                  setStableDepositError(null)
-                  setStableDepositTx(null)
-                  try {
-                    const assetId = Number(stableDepositAssetId)
-                    const amt = Number(stableDepositAmount)
-                    const txId = await depositStablecoinToVault(signTransactions, activeAddress, assetId, amt)
-                    setStableDepositTx(txId)
-                    await refreshData()
-                  } catch (e: any) {
-                    setStableDepositError(e?.message ?? 'Stablecoin deposit failed.')
-                  } finally {
-                    setStableDepositBusy(false)
-                  }
-                }}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold text-sm disabled:opacity-50"
-              >
-                {stableDepositBusy ? 'Signing / confirming…' : 'Deposit stablecoin'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       <AIChatbot

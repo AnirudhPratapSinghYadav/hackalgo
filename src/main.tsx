@@ -6,6 +6,7 @@ import '@blockshake/defly-connect'
 import App from './App.tsx'
 import './index.css'
 import { getNetworkConfig } from './services/networkConfig'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const net = getNetworkConfig()
 
@@ -17,8 +18,10 @@ const walletManager = new WalletManager({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <WalletProvider manager={walletManager}>
-      <App />
-    </WalletProvider>
+    <ErrorBoundary>
+      <WalletProvider manager={walletManager}>
+        <App />
+      </WalletProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 )

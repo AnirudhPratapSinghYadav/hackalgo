@@ -317,6 +317,116 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* PREMIUM STORYTELLING (Humanitarian Intelligence Platform) */}
+      <section className="py-16 sm:py-20 bg-gradient-to-b from-white to-[#f8f9fb] border-t border-gray-100">
+        <div className="max-w-6xl mx-auto px-5 sm:px-6">
+          <div className="text-center mb-10 reveal" data-reveal>
+            <span className="text-xs font-bold text-[#2563EB] uppercase tracking-widest">Humanitarian Intelligence</span>
+            <h2 className="text-gray-900 font-extrabold text-3xl sm:text-4xl mt-3 tracking-tight">
+              Crisis intelligence that feels premium — and proves itself on-chain
+            </h2>
+            <p className="text-gray-500 mt-4 max-w-3xl mx-auto leading-relaxed">
+              AlgoVault pairs AI crisis verification with Algorand-native transparency, so decisions are explainable,
+              auditable, and fast — even under pressure.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-12 gap-6">
+            {/* SECTION A */}
+            <div className="lg:col-span-5 rounded-3xl border border-gray-100 bg-white p-7 card-shadow reveal" data-reveal>
+              <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest">Respond to Crisis from Anywhere</p>
+              <h3 className="text-gray-900 font-extrabold text-xl mt-2 tracking-tight">WhatsApp + Telegram + AI alerts</h3>
+              <p className="text-sm text-gray-500 mt-3 leading-relaxed">
+                Message the Guardian like a human. It understands intent, handles typos, remembers context, and responds
+                with verified briefs — not robotic replies.
+              </p>
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Channel</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <svg className="w-5 h-5" viewBox="0 0 32 32" aria-hidden="true">
+                      <path fill="#25D366" d="M16 3C9.1 3 3.5 8.6 3.5 15.5c0 2.6.8 5.1 2.2 7.2L4 29l6.5-1.7c2 1.1 4.2 1.7 6.5 1.7 6.9 0 12.5-5.6 12.5-12.5S22.9 3 16 3z"/>
+                      <path fill="#fff" d="M12.3 9.6c-.3-.7-.6-.7-.9-.7h-.8c-.3 0-.7.1-1 .5-.3.4-1.3 1.2-1.3 3 0 1.8 1.3 3.5 1.5 3.8.2.2 2.6 4.1 6.3 5.6 3.1 1.3 3.7 1 4.4.9.7-.1 2.2-.9 2.5-1.8.3-.9.3-1.6.2-1.8-.1-.2-.3-.3-.6-.5-.3-.1-2.2-1.1-2.6-1.2-.3-.1-.6-.1-.9.2-.3.3-1 1.2-1.2 1.4-.2.2-.5.3-.8.1-.3-.1-1.4-.5-2.6-1.6-1-.9-1.6-2-1.8-2.3-.2-.3 0-.5.1-.7.2-.2.3-.5.5-.7.2-.2.3-.4.4-.7.1-.2.1-.5 0-.7-.1-.2-.8-2-.9-2.3z"/>
+                    </svg>
+                    <p className="text-sm font-extrabold text-gray-900">WhatsApp</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Channel</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <svg className="w-5 h-5" viewBox="0 0 32 32" aria-hidden="true">
+                      <path fill="#229ED9" d="M16 3C8.8 3 3 8.8 3 16s5.8 13 13 13 13-5.8 13-13S23.2 3 16 3z"/>
+                      <path fill="#fff" d="M23.6 10.2l-2.6 12.4c-.2.9-.7 1.1-1.5.7l-4.1-3-2 1.9c-.2.2-.4.4-.8.4l.3-4.5 8.1-7.3c.4-.3-.1-.5-.6-.2l-10 6.3-4.3-1.4c-.9-.3-.9-.9.2-1.3l16.7-6.5c.8-.3 1.5.2 1.2 1.5z"/>
+                    </svg>
+                    <p className="text-sm font-extrabold text-gray-900">Telegram</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Brain</p>
+                  <p className="text-sm font-extrabold text-gray-900 mt-2">On‑Chain Proof</p>
+                  <p className="text-[11px] text-gray-500 mt-1">Algorand + Lora</p>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION B */}
+            <div className="lg:col-span-7 rounded-3xl border border-gray-100 bg-gradient-to-br from-[#0a0e27] via-[#111827] to-[#1e1b4b] p-7 overflow-hidden card-shadow reveal" data-reveal>
+              <div className="flex items-start justify-between gap-6 flex-wrap">
+                <div>
+                  <p className="text-xs font-bold text-cyan-200 uppercase tracking-widest">Every Contribution Verified On-Chain</p>
+                  <h3 className="text-white font-extrabold text-xl mt-2 tracking-tight">Algorand + Lora proof links</h3>
+                  <p className="text-white/55 text-sm mt-3 leading-relaxed max-w-xl">
+                    Contributions and releases are recorded transparently on Algorand. Anyone can independently verify
+                    transactions and balances using Lora Explorer — no trust required.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
+                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Auditability</p>
+                  <p className="text-white font-extrabold mt-1">Public, verifiable, timestamped</p>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 font-mono text-[12px] text-emerald-100/80 leading-relaxed">
+                <div>[12:00:05] 📡 INGRESS: “flood in Hyderabad?”</div>
+                <div>[12:00:08] 🔍 ORACLE: verifying live sources…</div>
+                <div>[12:00:12] ✅ CONSENSUS: sources linked + timestamped</div>
+                <div>[12:00:15] ⚡ SMART CONTRACT: action prepared (auditable)</div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION C */}
+          <div className="mt-6 rounded-3xl border border-gray-100 bg-white p-7 card-shadow reveal" data-reveal>
+            <div className="flex items-start justify-between gap-6 flex-wrap">
+              <div>
+                <p className="text-xs font-bold text-violet-700 uppercase tracking-widest">AI Monitors 24/7</p>
+                <h3 className="text-gray-900 font-extrabold text-xl mt-2 tracking-tight">Global signals → verified briefs</h3>
+                <p className="text-sm text-gray-500 mt-3 leading-relaxed max-w-3xl">
+                  Instead of overwhelming dashboards, AlgoVault produces calm, human-grade intelligence: what’s happening,
+                  why it matters, sources, confidence, and the safest next action.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Live intelligence posture
+              </div>
+            </div>
+
+            <div className="mt-6 grid sm:grid-cols-3 gap-4">
+              {['South Asia', 'East Asia', 'Global'].map((r) => (
+                <div key={r} className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{r}</p>
+                  <div className="mt-3 h-2.5 rounded-full bg-white border border-gray-100 overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-blue-500 via-violet-500 to-cyan-400 w-[68%]" />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Signal density → verified briefs (not raw noise)</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* USE CASES */}
       <section id="use-cases" className="py-20 sm:py-28 bg-white">
         <div className="max-w-6xl mx-auto px-5 sm:px-6">

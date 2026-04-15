@@ -1,5 +1,6 @@
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+// Use a widely-available model alias; avoid newer aliases that may 404 for some keys.
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
 
 export interface ChatMessage {
   role: 'user' | 'model'
@@ -187,6 +188,70 @@ function getSmartFallback(message: string, ctx: UserContext): string {
   const { totalSaved, streak, milestone, lockEnabled, goalAmount, penaltyPct } = ctx
   const nextBadge = milestone < 1 ? 10 : milestone < 2 ? 50 : milestone < 3 ? 100 : null
   const remaining = nextBadge ? (nextBadge - totalSaved).toFixed(2) : null
+
+  if (msg === 'how are you' || msg === 'how r u' || msg === 'how are you?' || msg === 'hru' || msg === 'sup') {
+    return `Doing great — and your vault is looking solid: ${totalSaved.toFixed(2)} ALGO saved, streak ${streak}, milestone ${milestone}/3. Want me to help you hit the next badge${remaining ? ` (only ${remaining} ALGO away)` : ''}?`
+  }
+
+  // Vault summary fallback: deterministic, non-repetitive, uses real numbers only.
+  if (msg.includes('create a concise, product-grade summary') && msg.includes('format strictly as 6 bullet points')) {
+    const labelMatch = message.match(/about:\s*(.+)\./i)
+    const vaultLabel = String(labelMatch?.[1] ?? '').trim()
+    const bullets: string[] = []
+
+    const core = [
+      `- On-chain personal savings: ${totalSaved.toFixed(2)} ALGO (verifiable on Lora).`,
+      `- Deposit consistency: ${streak} deposit streak and milestone ${milestone}/3.`,
+    ]
+    const global =
+      typeof ctx.globalDeposited === 'number' && typeof ctx.globalContributors === 'number'
+        ? [`- Network-wide: ${ctx.globalDeposited.toFixed(2)} ALGO across ${ctx.globalContributors} contributors (global state).`]
+        : [`- Network-wide totals: Not enough on-chain data yet.`]
+
+    if (/education guardian vault/i.test(vaultLabel)) {
+      bullets.push(
+        ...core,
+        ...global,
+        `- Guardian intent: fund a beneficiary with transparent contributions (your current tracked balance is ${totalSaved.toFixed(2)} ALGO).`,
+        `- Release control: emergency release can be triggered by the configured Guardian agent (not derived from your wallet stats).`,
+        `- Next action: keep depositing toward your next milestone (${remaining ? `${remaining} ALGO away` : 'all milestones achieved'}).`,
+      )
+      return bullets.slice(0, 6).join('\n')
+    }
+
+    if (/community disaster reserve/i.test(vaultLabel)) {
+      bullets.push(
+        ...core,
+        ...global,
+        `- Reserve purpose: pooled emergency buffer; your contribution signal today is ${totalSaved.toFixed(2)} ALGO.`,
+        `- Verification: releases should be justified by real-world evidence and verified via explorer links.`,
+        `- Next action: build buffer cadence (streak ${streak}) and avoid breaking it.`,
+      )
+      return bullets.slice(0, 6).join('\n')
+    }
+
+    if (/savings pact/i.test(vaultLabel)) {
+      bullets.push(
+        ...core,
+        ...global,
+        `- Pact enforcement: penalties and transfers are on-chain and not manually editable (milestone ${milestone}/3 reflects your progress).`,
+        `- Accountability lever: your streak (${streak}) is the strongest predictor for pact success.`,
+        `- Next action: set/confirm pact terms and make the next scheduled deposit.`,
+      )
+      return bullets.slice(0, 6).join('\n')
+    }
+
+    // Personal Savings Vault (default)
+    bullets.push(
+      ...core,
+      ...global,
+      lockEnabled
+        ? `- Temptation Lock: ACTIVE with goal ${goalAmount.toFixed(2)} ALGO and ${penaltyPct.toFixed(2)}% penalty.`
+        : `- Temptation Lock: Not set (you can enable it to protect your ${totalSaved.toFixed(2)} ALGO balance).`,
+      `- Next milestone: ${remaining ? `${remaining} ALGO remaining` : 'all milestones achieved'}.`,
+    )
+    return bullets.slice(0, 6).join('\n')
+  }
 
   if (msg.includes('how much') || msg.includes('balance') || msg.includes('saved'))
     return `You currently have ${totalSaved.toFixed(2)} ALGO saved in your vault, recorded immutably on Algorand. ${remaining ? `You need ${remaining} more ALGO to reach your next milestone badge.` : 'All milestones achieved!'}`

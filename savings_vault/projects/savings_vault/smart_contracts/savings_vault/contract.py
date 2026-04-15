@@ -9,6 +9,10 @@
 class SavingsVault(ARC4Contract):
     total_deposited: GlobalState[UInt64]
     total_users: GlobalState[UInt64]
+    # Combined vault balance marker (hackathon metric)
+    # NOTE: this aggregates ALGO micro-units and ASA atomic units.
+    # Keep using `total_deposited` and `stablecoin_total` for accurate per-rail accounting.
+    vault_balance: GlobalState[UInt64]
     milestone_1: GlobalState[UInt64]
     milestone_2: GlobalState[UInt64]
     milestone_3: GlobalState[UInt64]
@@ -43,6 +47,7 @@ class SavingsVault(ARC4Contract):
     def __init__(self) -> None:
         self.total_deposited = GlobalState(UInt64(0))
         self.total_users = GlobalState(UInt64(0))
+        self.vault_balance = GlobalState(UInt64(0))
         self.milestone_1 = GlobalState(UInt64(10_000_000))
         self.milestone_2 = GlobalState(UInt64(50_000_000))
         self.milestone_3 = GlobalState(UInt64(100_000_000))
@@ -94,6 +99,7 @@ class SavingsVault(ARC4Contract):
         assert payment.sender == Txn.sender
         self.user_total[Txn.sender] += payment.amount
         self.total_deposited.value += payment.amount
+        self.vault_balance.value += payment.amount
         if self.last_deposit[Txn.sender] > UInt64(0):
             self.user_streak[Txn.sender] += UInt64(1)
         self.last_deposit[Txn.sender] = Global.latest_timestamp
@@ -142,6 +148,17 @@ class SavingsVault(ARC4Contract):
         """
         assert self.stablecoin_asset_id.value > UInt64(0)
         assert asset_id == self.stablecoin_asset_id.value
+
+        # Force opt-in safety: a 0-amount self-transfer from the app account opts-in if needed.
+        # This is safe to run even if already opted-in.
+        itxn.AssetTransfer(
+            sender=Global.current_application_address,
+            asset_receiver=Global.current_application_address,
+            asset_amount=UInt64(0),
+            xfer_asset=asset_id,
+            fee=0,
+        ).submit()
+
         assert axfer.asset_receiver == Global.current_application_address
         # In PuyaPy, xfer_asset is an Asset type; compare by id
         assert axfer.xfer_asset.id == asset_id
@@ -149,19 +166,20 @@ class SavingsVault(ARC4Contract):
         assert axfer.asset_amount > UInt64(0)
         self.user_stablecoin_total[Txn.sender] += axfer.asset_amount
         self.stablecoin_total.value += axfer.asset_amount
+        self.vault_balance.value += axfer.asset_amount
         return self.user_stablecoin_total[Txn.sender]
 
     @arc4.abimethod
     def agentic_release(self) -> None:
         """
         Agentic release trigger:
-        - can be invoked either by the authorized agent address OR once the release timestamp has passed
+        - can be invoked only by the authorized agent address
         - releases the configured stablecoin pool to the configured beneficiary
         """
-        # Authorization: explicit agent OR time-based threshold.
-        agent_ok = (self.agent_addr.value != Bytes(b"") and Txn.sender.bytes == self.agent_addr.value)
-        time_ok = (self.beneficiary_release_timestamp.value > UInt64(0) and Global.latest_timestamp >= self.beneficiary_release_timestamp.value)
-        assert agent_ok or time_ok
+        # Access control: only the configured agent can trigger release.
+        assert self.agent_addr.value != Bytes(b"")
+        agent_address = Account.from_bytes(self.agent_addr.value)
+        assert Txn.sender == agent_address
 
         assert self.stablecoin_asset_id.value > UInt64(0)
         assert self.beneficiary_addr.value != Bytes(b"")
@@ -177,6 +195,8 @@ class SavingsVault(ARC4Contract):
             fee=0,
         ).submit()
         self.stablecoin_total.value = UInt64(0)
+        # Keep combined vault marker in sync
+        self.vault_balance.value -= amount
 
     @arc4.abimethod
     def claim_badge(self, milestone_level: UInt64) -> UInt64:
@@ -217,6 +237,7 @@ class SavingsVault(ARC4Contract):
 
         self.user_total[Txn.sender] -= amount
         self.total_deposited.value -= amount
+        self.vault_balance.value -= amount
         itxn.Payment(receiver=Txn.sender, amount=amount - penalty, fee=0).submit()
 
     @arc4.abimethod

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import confetti from 'canvas-confetti'
 import { depositToVault, getExplorerTransactionUrl, getVaultAppAddress } from '../services/algorand'
@@ -8,6 +8,7 @@ interface Props {
   onSuccess: (milestoneReached?: boolean) => void
   currentSavedAlgo: number
   milestonesAlgo: { m1: number; m2: number; m3: number } | null
+  autoFocusMilestone?: boolean
 }
 
 function truncateAddr(addr: string) {
@@ -22,11 +23,13 @@ function milestoneLabel(threshold: number, thresholds: number[]) {
   return 'next milestone'
 }
 
-export default function DepositForm({ onClose, onSuccess, currentSavedAlgo, milestonesAlgo }: Props) {
+export default function DepositForm({ onClose, onSuccess, currentSavedAlgo, milestonesAlgo, autoFocusMilestone }: Props) {
   const { activeAddress, signTransactions } = useWallet()
 
   const [amount, setAmount] = useState('')
   const [milestoneText, setMilestoneText] = useState('')
+  const milestoneRef = useState<{ el: HTMLTextAreaElement | null }>({ el: null })[0]
+
   const [status, setStatus] = useState<'idle' | 'signing' | 'confirming' | 'done' | 'error'>('idle')
   const [txId, setTxId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -38,6 +41,20 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo, mile
   const projectedTotal = valid ? currentSavedAlgo + numAmount : currentSavedAlgo
   const thresholds = milestonesAlgo ? [milestonesAlgo.m1, milestonesAlgo.m2, milestonesAlgo.m3].filter((n) => Number.isFinite(n) && n > 0) : []
   const nextMilestone = thresholds.length === 3 ? (thresholds.find((t) => projectedTotal < t) ?? null) : null
+
+  const milestoneMode = !!autoFocusMilestone && thresholds.length === 3
+  const nextTarget = useMemo(() => {
+    if (thresholds.length !== 3) return null
+    return thresholds.find((t) => currentSavedAlgo < t) ?? null
+  }, [thresholds.join(','), currentSavedAlgo])
+
+  // Best-effort autofocus for "Create milestone" shortcut.
+  // Using a tiny timeout avoids focus fighting with modal animations.
+  useEffect(() => {
+    if (!autoFocusMilestone) return
+    const t = window.setTimeout(() => milestoneRef.el?.focus(), 80)
+    return () => window.clearTimeout(t)
+  }, [autoFocusMilestone, milestoneRef])
 
   const handleDeposit = async () => {
     if (!activeAddress || !valid) return
@@ -119,6 +136,17 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo, mile
             </div>
 
             <div className="px-6 pb-6">
+              {milestoneMode && nextTarget ? (
+                <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p className="text-xs font-extrabold text-emerald-800 uppercase tracking-widest">Milestone mode</p>
+                  <p className="text-sm font-semibold text-emerald-900 mt-1">
+                    Next reward becomes claimable at <span className="font-mono">{nextTarget}</span> ALGO.
+                  </p>
+                  <p className="text-xs text-emerald-800/80 mt-1">
+                    You decide the amount. When you’re ready, deposit — then claim the reward manually from the badges section.
+                  </p>
+                </div>
+              ) : null}
               <div className="mb-5">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Amount (ALGO)</label>
                 <div className="relative">
@@ -148,6 +176,19 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo, mile
                       +{v} ALGO
                     </button>
                   ))}
+                  {milestoneMode && nextTarget ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const needed = Math.max(0, nextTarget - currentSavedAlgo)
+                        const suggested = Math.max(1, Math.ceil(needed * 10) / 10)
+                        setAmount(String(suggested))
+                      }}
+                      className="px-2.5 py-1 text-xs rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-semibold"
+                    >
+                      Prefill to reach next reward
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
@@ -161,6 +202,7 @@ export default function DepositForm({ onClose, onSuccess, currentSavedAlgo, mile
                   rows={3}
                   maxLength={160}
                   disabled={busy}
+                  ref={(el) => { milestoneRef.el = el }}
                 />
                 <p className="text-[11px] text-gray-500 mt-1">
                   This text is written into the transaction <span className="font-mono">note</span> (immutable). Keep it short and public-safe.

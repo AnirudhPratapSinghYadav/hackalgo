@@ -4,102 +4,107 @@
 // algopy.arc4.ARC4Contract.approval_program() -> uint64:
 main:
     intcblock 0 1 8 32 1000000
-    bytecblock "user_total" 0x "total_deposited" 0x151f7c75 "stablecoin_total" "user_milestone" "user_streak" "total_users" "pact_enabled" "pact_cadence_seconds" "pact_penalty_amount" "pact_user_a" "pact_user_b" "stablecoin_asset_id" "beneficiary_release_timestamp" "agent_addr" "last_deposit" "lock_enabled" "user_stablecoin_total" "milestone_1" "milestone_2" "milestone_3" "pact_required_amount" "beneficiary_addr" "user_goal_amount" "user_penalty_bps" "penalty_sink" "badge_asset_1" "badge_asset_2" "badge_asset_3" "dream_uri" "dream_title"
+    bytecblock "user_total" 0x "vault_balance" "total_deposited" 0x151f7c75 "stablecoin_total" "user_milestone" "user_streak" "total_users" "pact_enabled" "pact_cadence_seconds" "pact_penalty_amount" "pact_user_a" "pact_user_b" "stablecoin_asset_id" "last_deposit" "lock_enabled" "user_stablecoin_total" "milestone_1" "milestone_2" "milestone_3" "pact_required_amount" "beneficiary_addr" "agent_addr" "user_goal_amount" "user_penalty_bps" "penalty_sink" "badge_asset_1" "badge_asset_2" "badge_asset_3" "beneficiary_release_timestamp" "dream_uri" "dream_title"
     txn ApplicationID
     bnz main_after_if_else@2
-    // smart_contracts/savings_vault/contract.py:44
-    // self.total_deposited = GlobalState(UInt64(0))
-    bytec_2 // "total_deposited"
-    intc_0 // 0
-    app_global_put
-    // smart_contracts/savings_vault/contract.py:45
-    // self.total_users = GlobalState(UInt64(0))
-    bytec 7 // "total_users"
-    intc_0 // 0
-    app_global_put
-    // smart_contracts/savings_vault/contract.py:46
-    // self.milestone_1 = GlobalState(UInt64(10_000_000))
-    bytec 19 // "milestone_1"
-    pushint 10000000
-    app_global_put
-    // smart_contracts/savings_vault/contract.py:47
-    // self.milestone_2 = GlobalState(UInt64(50_000_000))
-    bytec 20 // "milestone_2"
-    pushint 50000000
-    app_global_put
     // smart_contracts/savings_vault/contract.py:48
-    // self.milestone_3 = GlobalState(UInt64(100_000_000))
-    bytec 21 // "milestone_3"
-    pushint 100000000
+    // self.total_deposited = GlobalState(UInt64(0))
+    bytec_3 // "total_deposited"
+    intc_0 // 0
     app_global_put
     // smart_contracts/savings_vault/contract.py:49
+    // self.total_users = GlobalState(UInt64(0))
+    bytec 8 // "total_users"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:50
+    // self.vault_balance = GlobalState(UInt64(0))
+    bytec_2 // "vault_balance"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:51
+    // self.milestone_1 = GlobalState(UInt64(10_000_000))
+    bytec 18 // "milestone_1"
+    pushint 10000000
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:52
+    // self.milestone_2 = GlobalState(UInt64(50_000_000))
+    bytec 19 // "milestone_2"
+    pushint 50000000
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:53
+    // self.milestone_3 = GlobalState(UInt64(100_000_000))
+    bytec 20 // "milestone_3"
+    pushint 100000000
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:54
     // self.badge_asset_1 = GlobalState(UInt64(0))
     bytec 27 // "badge_asset_1"
     intc_0 // 0
     app_global_put
-    // smart_contracts/savings_vault/contract.py:50
+    // smart_contracts/savings_vault/contract.py:55
     // self.badge_asset_2 = GlobalState(UInt64(0))
     bytec 28 // "badge_asset_2"
     intc_0 // 0
     app_global_put
-    // smart_contracts/savings_vault/contract.py:51
+    // smart_contracts/savings_vault/contract.py:56
     // self.badge_asset_3 = GlobalState(UInt64(0))
     bytec 29 // "badge_asset_3"
     intc_0 // 0
     app_global_put
-    // smart_contracts/savings_vault/contract.py:52
-    // self.pact_enabled = GlobalState(UInt64(0))
-    bytec 8 // "pact_enabled"
-    intc_0 // 0
-    app_global_put
-    // smart_contracts/savings_vault/contract.py:53
-    // self.pact_required_amount = GlobalState(UInt64(1_000_000))
-    bytec 22 // "pact_required_amount"
-    intc 4 // 1000000
-    app_global_put
-    // smart_contracts/savings_vault/contract.py:54
-    // self.pact_cadence_seconds = GlobalState(UInt64(604_800))
-    bytec 9 // "pact_cadence_seconds"
-    pushint 604800
-    app_global_put
-    // smart_contracts/savings_vault/contract.py:55
-    // self.pact_penalty_amount = GlobalState(UInt64(100_000))
-    bytec 10 // "pact_penalty_amount"
-    pushint 100000
-    app_global_put
-    // smart_contracts/savings_vault/contract.py:56
-    // self.pact_user_a = GlobalState(Bytes(b""))
-    bytec 11 // "pact_user_a"
-    bytec_1 // 0x
-    app_global_put
     // smart_contracts/savings_vault/contract.py:57
-    // self.pact_user_b = GlobalState(Bytes(b""))
-    bytec 12 // "pact_user_b"
-    bytec_1 // 0x
+    // self.pact_enabled = GlobalState(UInt64(0))
+    bytec 9 // "pact_enabled"
+    intc_0 // 0
     app_global_put
     // smart_contracts/savings_vault/contract.py:58
-    // self.stablecoin_asset_id = GlobalState(UInt64(0))
-    bytec 13 // "stablecoin_asset_id"
-    intc_0 // 0
+    // self.pact_required_amount = GlobalState(UInt64(1_000_000))
+    bytec 21 // "pact_required_amount"
+    intc 4 // 1000000
     app_global_put
     // smart_contracts/savings_vault/contract.py:59
-    // self.stablecoin_total = GlobalState(UInt64(0))
-    bytec 4 // "stablecoin_total"
-    intc_0 // 0
+    // self.pact_cadence_seconds = GlobalState(UInt64(604_800))
+    bytec 10 // "pact_cadence_seconds"
+    pushint 604800
     app_global_put
     // smart_contracts/savings_vault/contract.py:60
-    // self.beneficiary_addr = GlobalState(Bytes(b""))
-    bytec 23 // "beneficiary_addr"
-    bytec_1 // 0x
+    // self.pact_penalty_amount = GlobalState(UInt64(100_000))
+    bytec 11 // "pact_penalty_amount"
+    pushint 100000
     app_global_put
     // smart_contracts/savings_vault/contract.py:61
-    // self.beneficiary_release_timestamp = GlobalState(UInt64(0))
-    bytec 14 // "beneficiary_release_timestamp"
-    intc_0 // 0
+    // self.pact_user_a = GlobalState(Bytes(b""))
+    bytec 12 // "pact_user_a"
+    bytec_1 // 0x
     app_global_put
     // smart_contracts/savings_vault/contract.py:62
+    // self.pact_user_b = GlobalState(Bytes(b""))
+    bytec 13 // "pact_user_b"
+    bytec_1 // 0x
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:63
+    // self.stablecoin_asset_id = GlobalState(UInt64(0))
+    bytec 14 // "stablecoin_asset_id"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:64
+    // self.stablecoin_total = GlobalState(UInt64(0))
+    bytec 5 // "stablecoin_total"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:65
+    // self.beneficiary_addr = GlobalState(Bytes(b""))
+    bytec 22 // "beneficiary_addr"
+    bytec_1 // 0x
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:66
+    // self.beneficiary_release_timestamp = GlobalState(UInt64(0))
+    bytec 30 // "beneficiary_release_timestamp"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:67
     // self.agent_addr = GlobalState(Bytes(b""))
-    bytec 15 // "agent_addr"
+    bytec 23 // "agent_addr"
     bytec_1 // 0x
     app_global_put
 
@@ -126,7 +131,7 @@ main_switch_case_next@6:
     err
 
 main_opt_in_route@5:
-    // smart_contracts/savings_vault/contract.py:75
+    // smart_contracts/savings_vault/contract.py:80
     // @arc4.abimethod(allow_actions=["OptIn"])
     txn OnCompletion
     intc_1 // OptIn
@@ -147,84 +152,84 @@ main___algopy_default_create@25:
 
 // smart_contracts.savings_vault.contract.SavingsVault.opt_in[routing]() -> void:
 opt_in:
-    // smart_contracts/savings_vault/contract.py:77
+    // smart_contracts/savings_vault/contract.py:82
     // self.user_total[Txn.sender] = UInt64(0)
     txn Sender
     bytec_0 // "user_total"
     intc_0 // 0
     app_local_put
-    // smart_contracts/savings_vault/contract.py:78
+    // smart_contracts/savings_vault/contract.py:83
     // self.user_milestone[Txn.sender] = UInt64(0)
     txn Sender
-    bytec 5 // "user_milestone"
+    bytec 6 // "user_milestone"
     intc_0 // 0
     app_local_put
-    // smart_contracts/savings_vault/contract.py:79
+    // smart_contracts/savings_vault/contract.py:84
     // self.user_streak[Txn.sender] = UInt64(0)
     txn Sender
-    bytec 6 // "user_streak"
+    bytec 7 // "user_streak"
     intc_0 // 0
     app_local_put
-    // smart_contracts/savings_vault/contract.py:80
+    // smart_contracts/savings_vault/contract.py:85
     // self.last_deposit[Txn.sender] = UInt64(0)
     txn Sender
-    bytec 16 // "last_deposit"
+    bytec 15 // "last_deposit"
     intc_0 // 0
     app_local_put
-    // smart_contracts/savings_vault/contract.py:81
+    // smart_contracts/savings_vault/contract.py:86
     // self.lock_enabled[Txn.sender] = UInt64(0)
     txn Sender
-    bytec 17 // "lock_enabled"
+    bytec 16 // "lock_enabled"
     intc_0 // 0
     app_local_put
-    // smart_contracts/savings_vault/contract.py:82
+    // smart_contracts/savings_vault/contract.py:87
     // self.user_goal_amount[Txn.sender] = UInt64(0)
     txn Sender
     bytec 24 // "user_goal_amount"
     intc_0 // 0
     app_local_put
-    // smart_contracts/savings_vault/contract.py:83
+    // smart_contracts/savings_vault/contract.py:88
     // self.user_penalty_bps[Txn.sender] = UInt64(0)
     txn Sender
     bytec 25 // "user_penalty_bps"
     intc_0 // 0
     app_local_put
-    // smart_contracts/savings_vault/contract.py:84
+    // smart_contracts/savings_vault/contract.py:89
     // self.penalty_sink[Txn.sender] = Txn.sender.bytes
     txn Sender
     bytec 26 // "penalty_sink"
     txn Sender
     app_local_put
-    // smart_contracts/savings_vault/contract.py:85
+    // smart_contracts/savings_vault/contract.py:90
     // self.dream_uri[Txn.sender] = Bytes(b"")
     txn Sender
-    bytec 30 // "dream_uri"
+    bytec 31 // "dream_uri"
     bytec_1 // 0x
     app_local_put
-    // smart_contracts/savings_vault/contract.py:86
+    // smart_contracts/savings_vault/contract.py:91
     // self.dream_title[Txn.sender] = Bytes(b"")
     txn Sender
-    bytec 31 // "dream_title"
+    bytec 32 // "dream_title"
     bytec_1 // 0x
     app_local_put
-    // smart_contracts/savings_vault/contract.py:87
+    // smart_contracts/savings_vault/contract.py:92
     // self.user_stablecoin_total[Txn.sender] = UInt64(0)
     txn Sender
-    bytec 18 // "user_stablecoin_total"
+    bytec 17 // "user_stablecoin_total"
     intc_0 // 0
     app_local_put
-    // smart_contracts/savings_vault/contract.py:88
+    // smart_contracts/savings_vault/contract.py:93
     // self.total_users.value += UInt64(1)
     intc_0 // 0
-    bytec 7 // "total_users"
+    bytec 8 // "total_users"
     app_global_get_ex
     assert // check self.total_users exists
     intc_1 // 1
     +
-    bytec 7 // "total_users"
+    bytec 8 // "total_users"
     swap
     app_global_put
-    // smart_contracts/savings_vault/contract.py:75
+    // smart_contracts/savings_vault/contract.py:80
     // @arc4.abimethod(allow_actions=["OptIn"])
     intc_1 // 1
     return
@@ -234,7 +239,7 @@ opt_in:
 deposit:
     bytec_1 // ""
     dup
-    // smart_contracts/savings_vault/contract.py:90
+    // smart_contracts/savings_vault/contract.py:95
     // @arc4.abimethod
     txn GroupIndex
     intc_1 // 1
@@ -244,14 +249,14 @@ deposit:
     intc_1 // pay
     ==
     assert // transaction type is pay
-    // smart_contracts/savings_vault/contract.py:92
+    // smart_contracts/savings_vault/contract.py:97
     // assert payment.receiver == Global.current_application_address
     dup
     gtxns Receiver
     global CurrentApplicationAddress
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:93
+    // smart_contracts/savings_vault/contract.py:98
     // assert payment.amount >= UInt64(1_000_000)
     dup
     gtxns Amount
@@ -259,14 +264,14 @@ deposit:
     intc 4 // 1000000
     >=
     assert
-    // smart_contracts/savings_vault/contract.py:94
+    // smart_contracts/savings_vault/contract.py:99
     // assert payment.sender == Txn.sender
     swap
     gtxns Sender
     txn Sender
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:95
+    // smart_contracts/savings_vault/contract.py:100
     // self.user_total[Txn.sender] += payment.amount
     txn Sender
     dup
@@ -279,49 +284,60 @@ deposit:
     bytec_0 // "user_total"
     swap
     app_local_put
-    // smart_contracts/savings_vault/contract.py:96
+    // smart_contracts/savings_vault/contract.py:101
     // self.total_deposited.value += payment.amount
     intc_0 // 0
-    bytec_2 // "total_deposited"
+    bytec_3 // "total_deposited"
     app_global_get_ex
     assert // check self.total_deposited exists
+    dig 1
     +
-    bytec_2 // "total_deposited"
+    bytec_3 // "total_deposited"
     swap
     app_global_put
-    // smart_contracts/savings_vault/contract.py:97
+    // smart_contracts/savings_vault/contract.py:102
+    // self.vault_balance.value += payment.amount
+    intc_0 // 0
+    bytec_2 // "vault_balance"
+    app_global_get_ex
+    assert // check self.vault_balance exists
+    +
+    bytec_2 // "vault_balance"
+    swap
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:103
     // if self.last_deposit[Txn.sender] > UInt64(0):
     txn Sender
     intc_0 // 0
-    bytec 16 // "last_deposit"
+    bytec 15 // "last_deposit"
     app_local_get_ex
     assert // check self.last_deposit exists for account
     bz deposit_after_if_else@3
-    // smart_contracts/savings_vault/contract.py:98
+    // smart_contracts/savings_vault/contract.py:104
     // self.user_streak[Txn.sender] += UInt64(1)
     txn Sender
     dup
     intc_0 // 0
-    bytec 6 // "user_streak"
+    bytec 7 // "user_streak"
     app_local_get_ex
     assert // check self.user_streak exists for account
     intc_1 // 1
     +
-    bytec 6 // "user_streak"
+    bytec 7 // "user_streak"
     swap
     app_local_put
 
 deposit_after_if_else@3:
-    // smart_contracts/savings_vault/contract.py:99
+    // smart_contracts/savings_vault/contract.py:105
     // self.last_deposit[Txn.sender] = Global.latest_timestamp
     txn Sender
-    bytec 16 // "last_deposit"
+    bytec 15 // "last_deposit"
     global LatestTimestamp
     app_local_put
-    // smart_contracts/savings_vault/contract.py:100
+    // smart_contracts/savings_vault/contract.py:106
     // return self._check_milestone(Txn.sender)
     txn Sender
-    // smart_contracts/savings_vault/contract.py:291
+    // smart_contracts/savings_vault/contract.py:312
     // bal = self.user_total[user]
     dup
     intc_0 // 0
@@ -332,18 +348,18 @@ deposit_after_if_else@3:
     cover 3
     bury 5
     assert // check self.user_total exists for account
-    // smart_contracts/savings_vault/contract.py:292
+    // smart_contracts/savings_vault/contract.py:313
     // current = self.user_milestone[user]
     intc_0 // 0
-    bytec 5 // "user_milestone"
+    bytec 6 // "user_milestone"
     app_local_get_ex
     swap
     bury 3
     assert // check self.user_milestone exists for account
-    // smart_contracts/savings_vault/contract.py:293
+    // smart_contracts/savings_vault/contract.py:314
     // if bal >= self.milestone_3.value and current < UInt64(3):
     intc_0 // 0
-    bytec 21 // "milestone_3"
+    bytec 20 // "milestone_3"
     app_global_get_ex
     assert // check self.milestone_3 exists
     >=
@@ -352,15 +368,15 @@ deposit_after_if_else@3:
     pushint 3
     <
     bz deposit_else_body@7
-    // smart_contracts/savings_vault/contract.py:294
+    // smart_contracts/savings_vault/contract.py:315
     // return UInt64(3)
     pushint 3
 
 deposit_after_inlined_smart_contracts.savings_vault.contract.SavingsVault._check_milestone@14:
-    // smart_contracts/savings_vault/contract.py:90
+    // smart_contracts/savings_vault/contract.py:95
     // @arc4.abimethod
     itob
-    bytec_3 // 0x151f7c75
+    bytec 4 // 0x151f7c75
     swap
     concat
     log
@@ -368,10 +384,10 @@ deposit_after_inlined_smart_contracts.savings_vault.contract.SavingsVault._check
     return
 
 deposit_else_body@7:
-    // smart_contracts/savings_vault/contract.py:295
+    // smart_contracts/savings_vault/contract.py:316
     // elif bal >= self.milestone_2.value and current < UInt64(2):
     intc_0 // 0
-    bytec 20 // "milestone_2"
+    bytec 19 // "milestone_2"
     app_global_get_ex
     assert // check self.milestone_2 exists
     dig 2
@@ -381,18 +397,18 @@ deposit_else_body@7:
     pushint 2
     <
     bz deposit_else_body@10
-    // smart_contracts/savings_vault/contract.py:296
+    // smart_contracts/savings_vault/contract.py:317
     // return UInt64(2)
     pushint 2
-    // smart_contracts/savings_vault/contract.py:100
+    // smart_contracts/savings_vault/contract.py:106
     // return self._check_milestone(Txn.sender)
     b deposit_after_inlined_smart_contracts.savings_vault.contract.SavingsVault._check_milestone@14
 
 deposit_else_body@10:
-    // smart_contracts/savings_vault/contract.py:297
+    // smart_contracts/savings_vault/contract.py:318
     // elif bal >= self.milestone_1.value and current < UInt64(1):
     intc_0 // 0
-    bytec 19 // "milestone_1"
+    bytec 18 // "milestone_1"
     app_global_get_ex
     assert // check self.milestone_1 exists
     dig 2
@@ -402,25 +418,25 @@ deposit_else_body@10:
     intc_1 // 1
     <
     bz deposit_after_if_else@13
-    // smart_contracts/savings_vault/contract.py:298
+    // smart_contracts/savings_vault/contract.py:319
     // return UInt64(1)
     intc_1 // 1
-    // smart_contracts/savings_vault/contract.py:100
+    // smart_contracts/savings_vault/contract.py:106
     // return self._check_milestone(Txn.sender)
     b deposit_after_inlined_smart_contracts.savings_vault.contract.SavingsVault._check_milestone@14
 
 deposit_after_if_else@13:
-    // smart_contracts/savings_vault/contract.py:299
+    // smart_contracts/savings_vault/contract.py:320
     // return UInt64(0)
     intc_0 // 0
-    // smart_contracts/savings_vault/contract.py:100
+    // smart_contracts/savings_vault/contract.py:106
     // return self._check_milestone(Txn.sender)
     b deposit_after_inlined_smart_contracts.savings_vault.contract.SavingsVault._check_milestone@14
 
 
 // smart_contracts.savings_vault.contract.SavingsVault.configure_stablecoin_and_release[routing]() -> void:
 configure_stablecoin_and_release:
-    // smart_contracts/savings_vault/contract.py:102
+    // smart_contracts/savings_vault/contract.py:108
     // @arc4.abimethod
     txna ApplicationArgs 1
     dup
@@ -448,37 +464,37 @@ configure_stablecoin_and_release:
     intc_3 // 32
     ==
     assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
-    // smart_contracts/savings_vault/contract.py:119
+    // smart_contracts/savings_vault/contract.py:125
     // assert Txn.sender == Global.creator_address
     txn Sender
     global CreatorAddress
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:120
+    // smart_contracts/savings_vault/contract.py:126
     // assert stablecoin_asset_id > UInt64(0)
     dig 3
     assert
-    // smart_contracts/savings_vault/contract.py:121
+    // smart_contracts/savings_vault/contract.py:127
     // self.stablecoin_asset_id.value = stablecoin_asset_id
-    bytec 13 // "stablecoin_asset_id"
+    bytec 14 // "stablecoin_asset_id"
     dig 4
     app_global_put
-    // smart_contracts/savings_vault/contract.py:122
+    // smart_contracts/savings_vault/contract.py:128
     // self.beneficiary_addr.value = beneficiary.bytes
-    bytec 23 // "beneficiary_addr"
+    bytec 22 // "beneficiary_addr"
     uncover 3
     app_global_put
-    // smart_contracts/savings_vault/contract.py:123
+    // smart_contracts/savings_vault/contract.py:129
     // self.beneficiary_release_timestamp.value = release_ts
-    bytec 14 // "beneficiary_release_timestamp"
+    bytec 30 // "beneficiary_release_timestamp"
     uncover 2
     app_global_put
-    // smart_contracts/savings_vault/contract.py:124
+    // smart_contracts/savings_vault/contract.py:130
     // self.agent_addr.value = agent.bytes
-    bytec 15 // "agent_addr"
+    bytec 23 // "agent_addr"
     swap
     app_global_put
-    // smart_contracts/savings_vault/contract.py:126-134
+    // smart_contracts/savings_vault/contract.py:132-140
     // # Ensure the app account is opted into the configured stablecoin ASA.
     // # Opt-in is a 0-amount AssetTransfer to self from the app account.
     // itxn.AssetTransfer(
@@ -489,31 +505,31 @@ configure_stablecoin_and_release:
     //     fee=0,
     // ).submit()
     itxn_begin
-    // smart_contracts/savings_vault/contract.py:129
+    // smart_contracts/savings_vault/contract.py:135
     // sender=Global.current_application_address,
     global CurrentApplicationAddress
-    // smart_contracts/savings_vault/contract.py:130
+    // smart_contracts/savings_vault/contract.py:136
     // asset_receiver=Global.current_application_address,
     dup
     uncover 2
     itxn_field XferAsset
-    // smart_contracts/savings_vault/contract.py:131
+    // smart_contracts/savings_vault/contract.py:137
     // asset_amount=UInt64(0),
     intc_0 // 0
     itxn_field AssetAmount
     itxn_field AssetReceiver
     itxn_field Sender
-    // smart_contracts/savings_vault/contract.py:126-128
+    // smart_contracts/savings_vault/contract.py:132-134
     // # Ensure the app account is opted into the configured stablecoin ASA.
     // # Opt-in is a 0-amount AssetTransfer to self from the app account.
     // itxn.AssetTransfer(
     pushint 4 // axfer
     itxn_field TypeEnum
-    // smart_contracts/savings_vault/contract.py:133
+    // smart_contracts/savings_vault/contract.py:139
     // fee=0,
     intc_0 // 0
     itxn_field Fee
-    // smart_contracts/savings_vault/contract.py:126-134
+    // smart_contracts/savings_vault/contract.py:132-140
     // # Ensure the app account is opted into the configured stablecoin ASA.
     // # Opt-in is a 0-amount AssetTransfer to self from the app account.
     // itxn.AssetTransfer(
@@ -524,7 +540,7 @@ configure_stablecoin_and_release:
     //     fee=0,
     // ).submit()
     itxn_submit
-    // smart_contracts/savings_vault/contract.py:102
+    // smart_contracts/savings_vault/contract.py:108
     // @arc4.abimethod
     intc_1 // 1
     return
@@ -532,7 +548,7 @@ configure_stablecoin_and_release:
 
 // smart_contracts.savings_vault.contract.SavingsVault.deposit_stablecoin[routing]() -> void:
 deposit_stablecoin:
-    // smart_contracts/savings_vault/contract.py:136
+    // smart_contracts/savings_vault/contract.py:142
     // @arc4.abimethod
     txn GroupIndex
     intc_1 // 1
@@ -549,79 +565,136 @@ deposit_stablecoin:
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/savings_vault/contract.py:143
+    // smart_contracts/savings_vault/contract.py:149
     // assert self.stablecoin_asset_id.value > UInt64(0)
     intc_0 // 0
-    bytec 13 // "stablecoin_asset_id"
+    bytec 14 // "stablecoin_asset_id"
     app_global_get_ex
     assert // check self.stablecoin_asset_id exists
     dup
     assert
-    // smart_contracts/savings_vault/contract.py:144
+    // smart_contracts/savings_vault/contract.py:150
     // assert asset_id == self.stablecoin_asset_id.value
     dig 1
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:145
+    // smart_contracts/savings_vault/contract.py:152-160
+    // # Force opt-in safety: a 0-amount self-transfer from the app account opts-in if needed.
+    // # This is safe to run even if already opted-in.
+    // itxn.AssetTransfer(
+    //     sender=Global.current_application_address,
+    //     asset_receiver=Global.current_application_address,
+    //     asset_amount=UInt64(0),
+    //     xfer_asset=asset_id,
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/savings_vault/contract.py:155
+    // sender=Global.current_application_address,
+    global CurrentApplicationAddress
+    // smart_contracts/savings_vault/contract.py:156
+    // asset_receiver=Global.current_application_address,
+    dup
+    dig 2
+    itxn_field XferAsset
+    // smart_contracts/savings_vault/contract.py:157
+    // asset_amount=UInt64(0),
+    intc_0 // 0
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field Sender
+    // smart_contracts/savings_vault/contract.py:152-154
+    // # Force opt-in safety: a 0-amount self-transfer from the app account opts-in if needed.
+    // # This is safe to run even if already opted-in.
+    // itxn.AssetTransfer(
+    pushint 4 // axfer
+    itxn_field TypeEnum
+    // smart_contracts/savings_vault/contract.py:159
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/savings_vault/contract.py:152-160
+    // # Force opt-in safety: a 0-amount self-transfer from the app account opts-in if needed.
+    // # This is safe to run even if already opted-in.
+    // itxn.AssetTransfer(
+    //     sender=Global.current_application_address,
+    //     asset_receiver=Global.current_application_address,
+    //     asset_amount=UInt64(0),
+    //     xfer_asset=asset_id,
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+    // smart_contracts/savings_vault/contract.py:162
     // assert axfer.asset_receiver == Global.current_application_address
     dig 1
     gtxns AssetReceiver
     global CurrentApplicationAddress
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:146-147
+    // smart_contracts/savings_vault/contract.py:163-164
     // # In PuyaPy, xfer_asset is an Asset type; compare by id
     // assert axfer.xfer_asset.id == asset_id
     dig 1
     gtxns XferAsset
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:148
+    // smart_contracts/savings_vault/contract.py:165
     // assert axfer.sender == Txn.sender
     dup
     gtxns Sender
     txn Sender
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:149
+    // smart_contracts/savings_vault/contract.py:166
     // assert axfer.asset_amount > UInt64(0)
     gtxns AssetAmount
     dup
     assert
-    // smart_contracts/savings_vault/contract.py:150
+    // smart_contracts/savings_vault/contract.py:167
     // self.user_stablecoin_total[Txn.sender] += axfer.asset_amount
     txn Sender
     dup
     intc_0 // 0
-    bytec 18 // "user_stablecoin_total"
+    bytec 17 // "user_stablecoin_total"
     app_local_get_ex
     assert // check self.user_stablecoin_total exists for account
     dig 2
     +
-    bytec 18 // "user_stablecoin_total"
+    bytec 17 // "user_stablecoin_total"
     swap
     app_local_put
-    // smart_contracts/savings_vault/contract.py:151
+    // smart_contracts/savings_vault/contract.py:168
     // self.stablecoin_total.value += axfer.asset_amount
     intc_0 // 0
-    bytec 4 // "stablecoin_total"
+    bytec 5 // "stablecoin_total"
     app_global_get_ex
     assert // check self.stablecoin_total exists
+    dig 1
     +
-    bytec 4 // "stablecoin_total"
+    bytec 5 // "stablecoin_total"
     swap
     app_global_put
-    // smart_contracts/savings_vault/contract.py:152
+    // smart_contracts/savings_vault/contract.py:169
+    // self.vault_balance.value += axfer.asset_amount
+    intc_0 // 0
+    bytec_2 // "vault_balance"
+    app_global_get_ex
+    assert // check self.vault_balance exists
+    +
+    bytec_2 // "vault_balance"
+    swap
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:170
     // return self.user_stablecoin_total[Txn.sender]
     txn Sender
     intc_0 // 0
-    bytec 18 // "user_stablecoin_total"
+    bytec 17 // "user_stablecoin_total"
     app_local_get_ex
     assert // check self.user_stablecoin_total exists for account
-    // smart_contracts/savings_vault/contract.py:136
+    // smart_contracts/savings_vault/contract.py:142
     // @arc4.abimethod
     itob
-    bytec_3 // 0x151f7c75
+    bytec 4 // 0x151f7c75
     swap
     concat
     log
@@ -631,79 +704,51 @@ deposit_stablecoin:
 
 // smart_contracts.savings_vault.contract.SavingsVault.agentic_release[routing]() -> void:
 agentic_release:
-    bytec_1 // ""
-    // smart_contracts/savings_vault/contract.py:161-162
-    // # Authorization: explicit agent OR time-based threshold.
-    // agent_ok = (self.agent_addr.value != Bytes(b"") and Txn.sender.bytes == self.agent_addr.value)
+    // smart_contracts/savings_vault/contract.py:179-180
+    // # Access control: only the configured agent can trigger release.
+    // assert self.agent_addr.value != Bytes(b"")
     intc_0 // 0
-    bytec 15 // "agent_addr"
+    bytec 23 // "agent_addr"
     app_global_get_ex
     assert // check self.agent_addr exists
+    dup
     bytec_1 // 0x
     !=
-    bz agentic_release_bool_false@4
-    txn Sender
-    intc_0 // 0
-    bytec 15 // "agent_addr"
-    app_global_get_ex
-    assert // check self.agent_addr exists
-    ==
-    bz agentic_release_bool_false@4
-    intc_1 // 1
-    bury 1
-
-agentic_release_bool_merge@5:
-    // smart_contracts/savings_vault/contract.py:163
-    // time_ok = (self.beneficiary_release_timestamp.value > UInt64(0) and Global.latest_timestamp >= self.beneficiary_release_timestamp.value)
-    intc_0 // 0
-    bytec 14 // "beneficiary_release_timestamp"
-    app_global_get_ex
-    assert // check self.beneficiary_release_timestamp exists
-    bz agentic_release_bool_false@8
-    global LatestTimestamp
-    intc_0 // 0
-    bytec 14 // "beneficiary_release_timestamp"
-    app_global_get_ex
-    assert // check self.beneficiary_release_timestamp exists
-    >=
-    bz agentic_release_bool_false@8
-    intc_1 // 1
-
-agentic_release_bool_merge@9:
-    // smart_contracts/savings_vault/contract.py:164
-    // assert agent_ok or time_ok
-    dig 1
-    ||
     assert
-    // smart_contracts/savings_vault/contract.py:166
+    // smart_contracts/savings_vault/contract.py:182
+    // assert Txn.sender == agent_address
+    txn Sender
+    ==
+    assert
+    // smart_contracts/savings_vault/contract.py:184
     // assert self.stablecoin_asset_id.value > UInt64(0)
     intc_0 // 0
-    bytec 13 // "stablecoin_asset_id"
+    bytec 14 // "stablecoin_asset_id"
     app_global_get_ex
     assert // check self.stablecoin_asset_id exists
     dup
     assert
-    // smart_contracts/savings_vault/contract.py:167
+    // smart_contracts/savings_vault/contract.py:185
     // assert self.beneficiary_addr.value != Bytes(b"")
     intc_0 // 0
-    bytec 23 // "beneficiary_addr"
+    bytec 22 // "beneficiary_addr"
     app_global_get_ex
     assert // check self.beneficiary_addr exists
     dup
     bytec_1 // 0x
     !=
     assert
-    // smart_contracts/savings_vault/contract.py:168
+    // smart_contracts/savings_vault/contract.py:186
     // amount = self.stablecoin_total.value
     intc_0 // 0
-    bytec 4 // "stablecoin_total"
+    bytec 5 // "stablecoin_total"
     app_global_get_ex
     assert // check self.stablecoin_total exists
-    // smart_contracts/savings_vault/contract.py:169
+    // smart_contracts/savings_vault/contract.py:187
     // assert amount > UInt64(0)
     dup
     assert
-    // smart_contracts/savings_vault/contract.py:172-178
+    // smart_contracts/savings_vault/contract.py:190-196
     // itxn.AssetTransfer(
     //     sender=Global.current_application_address,
     //     asset_receiver=beneficiary_acct,
@@ -712,23 +757,25 @@ agentic_release_bool_merge@9:
     //     fee=0,
     // ).submit()
     itxn_begin
-    // smart_contracts/savings_vault/contract.py:173
+    // smart_contracts/savings_vault/contract.py:191
     // sender=Global.current_application_address,
     global CurrentApplicationAddress
     uncover 3
     itxn_field XferAsset
-    itxn_field Sender
+    dig 1
     itxn_field AssetAmount
+    uncover 2
     itxn_field AssetReceiver
-    // smart_contracts/savings_vault/contract.py:172
+    itxn_field Sender
+    // smart_contracts/savings_vault/contract.py:190
     // itxn.AssetTransfer(
     pushint 4 // axfer
     itxn_field TypeEnum
-    // smart_contracts/savings_vault/contract.py:177
+    // smart_contracts/savings_vault/contract.py:195
     // fee=0,
     intc_0 // 0
     itxn_field Fee
-    // smart_contracts/savings_vault/contract.py:172-178
+    // smart_contracts/savings_vault/contract.py:190-196
     // itxn.AssetTransfer(
     //     sender=Global.current_application_address,
     //     asset_receiver=beneficiary_acct,
@@ -737,31 +784,34 @@ agentic_release_bool_merge@9:
     //     fee=0,
     // ).submit()
     itxn_submit
-    // smart_contracts/savings_vault/contract.py:179
+    // smart_contracts/savings_vault/contract.py:197
     // self.stablecoin_total.value = UInt64(0)
-    bytec 4 // "stablecoin_total"
+    bytec 5 // "stablecoin_total"
     intc_0 // 0
     app_global_put
-    // smart_contracts/savings_vault/contract.py:154
+    // smart_contracts/savings_vault/contract.py:198-199
+    // # Keep combined vault marker in sync
+    // self.vault_balance.value -= amount
+    intc_0 // 0
+    bytec_2 // "vault_balance"
+    app_global_get_ex
+    assert // check self.vault_balance exists
+    swap
+    -
+    bytec_2 // "vault_balance"
+    swap
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:172
     // @arc4.abimethod
     intc_1 // 1
     return
-
-agentic_release_bool_false@8:
-    intc_0 // 0
-    b agentic_release_bool_merge@9
-
-agentic_release_bool_false@4:
-    intc_0 // 0
-    bury 1
-    b agentic_release_bool_merge@5
 
 
 // smart_contracts.savings_vault.contract.SavingsVault.claim_badge[routing]() -> void:
 claim_badge:
     bytec_1 // ""
     dup
-    // smart_contracts/savings_vault/contract.py:181
+    // smart_contracts/savings_vault/contract.py:201
     // @arc4.abimethod
     txna ApplicationArgs 1
     dup
@@ -771,19 +821,19 @@ claim_badge:
     assert // invalid number of bytes for arc4.uint64
     btoi
     dup
-    // smart_contracts/savings_vault/contract.py:183
+    // smart_contracts/savings_vault/contract.py:203
     // current = self.user_milestone[Txn.sender]
     txn Sender
     intc_0 // 0
-    bytec 5 // "user_milestone"
+    bytec 6 // "user_milestone"
     app_local_get_ex
     assert // check self.user_milestone exists for account
-    // smart_contracts/savings_vault/contract.py:184
+    // smart_contracts/savings_vault/contract.py:204
     // assert milestone_level > current
     dig 1
     <
     assert
-    // smart_contracts/savings_vault/contract.py:185-186
+    // smart_contracts/savings_vault/contract.py:205-206
     // # Prevent invalid level injection (e.g. 4+) from mutating local state.
     // assert milestone_level >= UInt64(1) and milestone_level <= UInt64(3)
     bz claim_badge_bool_false@4
@@ -794,11 +844,11 @@ claim_badge:
     intc_1 // 1
 
 claim_badge_bool_merge@5:
-    // smart_contracts/savings_vault/contract.py:185-186
+    // smart_contracts/savings_vault/contract.py:205-206
     // # Prevent invalid level injection (e.g. 4+) from mutating local state.
     // assert milestone_level >= UInt64(1) and milestone_level <= UInt64(3)
     assert
-    // smart_contracts/savings_vault/contract.py:187
+    // smart_contracts/savings_vault/contract.py:207
     // user_bal = self.user_total[Txn.sender]
     txn Sender
     intc_0 // 0
@@ -807,49 +857,49 @@ claim_badge_bool_merge@5:
     swap
     bury 3
     assert // check self.user_total exists for account
-    // smart_contracts/savings_vault/contract.py:188
+    // smart_contracts/savings_vault/contract.py:208
     // badge_id = UInt64(0)
     intc_0 // 0
     bury 3
-    // smart_contracts/savings_vault/contract.py:189
+    // smart_contracts/savings_vault/contract.py:209
     // if milestone_level == UInt64(1):
     dup
     intc_1 // 1
     ==
     bz claim_badge_else_body@7
-    // smart_contracts/savings_vault/contract.py:190
+    // smart_contracts/savings_vault/contract.py:210
     // assert user_bal >= self.milestone_1.value
     intc_0 // 0
-    bytec 19 // "milestone_1"
+    bytec 18 // "milestone_1"
     app_global_get_ex
     assert // check self.milestone_1 exists
     dig 2
     <=
     assert
-    // smart_contracts/savings_vault/contract.py:191
+    // smart_contracts/savings_vault/contract.py:211
     // badge_id = self._mint_badge(Bytes(b"Vault Starter"), Bytes(b"VS1"), Bytes(b"ipfs://QmBadge1"))
     pushbytess 0x5661756c742053746172746572 0x565331 0x697066733a2f2f516d426164676531
     callsub _mint_badge
     dup
     bury 4
-    // smart_contracts/savings_vault/contract.py:192
+    // smart_contracts/savings_vault/contract.py:212
     // self.badge_asset_1.value = badge_id
     bytec 27 // "badge_asset_1"
     swap
     app_global_put
 
 claim_badge_after_if_else@13:
-    // smart_contracts/savings_vault/contract.py:201
+    // smart_contracts/savings_vault/contract.py:221
     // self.user_milestone[Txn.sender] = milestone_level
     txn Sender
-    bytec 5 // "user_milestone"
+    bytec 6 // "user_milestone"
     dig 2
     app_local_put
-    // smart_contracts/savings_vault/contract.py:181
+    // smart_contracts/savings_vault/contract.py:201
     // @arc4.abimethod
     dig 2
     itob
-    bytec_3 // 0x151f7c75
+    bytec 4 // 0x151f7c75
     swap
     concat
     log
@@ -857,28 +907,28 @@ claim_badge_after_if_else@13:
     return
 
 claim_badge_else_body@7:
-    // smart_contracts/savings_vault/contract.py:193
+    // smart_contracts/savings_vault/contract.py:213
     // elif milestone_level == UInt64(2):
     dup
     pushint 2
     ==
     bz claim_badge_else_body@9
-    // smart_contracts/savings_vault/contract.py:194
+    // smart_contracts/savings_vault/contract.py:214
     // assert user_bal >= self.milestone_2.value
     intc_0 // 0
-    bytec 20 // "milestone_2"
+    bytec 19 // "milestone_2"
     app_global_get_ex
     assert // check self.milestone_2 exists
     dig 2
     <=
     assert
-    // smart_contracts/savings_vault/contract.py:195
+    // smart_contracts/savings_vault/contract.py:215
     // badge_id = self._mint_badge(Bytes(b"Vault Builder"), Bytes(b"VB2"), Bytes(b"ipfs://QmBadge2"))
     pushbytess 0x5661756c74204275696c646572 0x564232 0x697066733a2f2f516d426164676532
     callsub _mint_badge
     dup
     bury 4
-    // smart_contracts/savings_vault/contract.py:196
+    // smart_contracts/savings_vault/contract.py:216
     // self.badge_asset_2.value = badge_id
     bytec 28 // "badge_asset_2"
     swap
@@ -886,28 +936,28 @@ claim_badge_else_body@7:
     b claim_badge_after_if_else@13
 
 claim_badge_else_body@9:
-    // smart_contracts/savings_vault/contract.py:197
+    // smart_contracts/savings_vault/contract.py:217
     // elif milestone_level == UInt64(3):
     dup
     pushint 3
     ==
     bz claim_badge_after_if_else@13
-    // smart_contracts/savings_vault/contract.py:198
+    // smart_contracts/savings_vault/contract.py:218
     // assert user_bal >= self.milestone_3.value
     intc_0 // 0
-    bytec 21 // "milestone_3"
+    bytec 20 // "milestone_3"
     app_global_get_ex
     assert // check self.milestone_3 exists
     dig 2
     <=
     assert
-    // smart_contracts/savings_vault/contract.py:199
+    // smart_contracts/savings_vault/contract.py:219
     // badge_id = self._mint_badge(Bytes(b"Vault Master"), Bytes(b"VM3"), Bytes(b"ipfs://QmBadge3"))
     pushbytess 0x5661756c74204d6173746572 0x564d33 0x697066733a2f2f516d426164676533
     callsub _mint_badge
     dup
     bury 4
-    // smart_contracts/savings_vault/contract.py:200
+    // smart_contracts/savings_vault/contract.py:220
     // self.badge_asset_3.value = badge_id
     bytec 29 // "badge_asset_3"
     swap
@@ -921,7 +971,7 @@ claim_badge_bool_false@4:
 
 // smart_contracts.savings_vault.contract.SavingsVault.withdraw[routing]() -> void:
 withdraw:
-    // smart_contracts/savings_vault/contract.py:204
+    // smart_contracts/savings_vault/contract.py:224
     // @arc4.abimethod
     txna ApplicationArgs 1
     dup
@@ -938,7 +988,7 @@ withdraw:
     intc_3 // 32
     ==
     assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
-    // smart_contracts/savings_vault/contract.py:206
+    // smart_contracts/savings_vault/contract.py:226
     // assert self.user_total[Txn.sender] >= amount
     txn Sender
     intc_0 // 0
@@ -947,23 +997,23 @@ withdraw:
     assert // check self.user_total exists for account
     <=
     assert
-    // smart_contracts/savings_vault/contract.py:207
+    // smart_contracts/savings_vault/contract.py:227
     // penalty = UInt64(0)
     intc_0 // 0
-    // smart_contracts/savings_vault/contract.py:209
+    // smart_contracts/savings_vault/contract.py:229
     // self.lock_enabled[Txn.sender] == UInt64(1)
     txn Sender
     intc_0 // 0
-    bytec 17 // "lock_enabled"
+    bytec 16 // "lock_enabled"
     app_local_get_ex
     assert // check self.lock_enabled exists for account
     intc_1 // 1
     ==
-    // smart_contracts/savings_vault/contract.py:209-210
+    // smart_contracts/savings_vault/contract.py:229-230
     // self.lock_enabled[Txn.sender] == UInt64(1)
     // and self.user_total[Txn.sender] < self.user_goal_amount[Txn.sender]
     bz withdraw_after_if_else@7
-    // smart_contracts/savings_vault/contract.py:210
+    // smart_contracts/savings_vault/contract.py:230
     // and self.user_total[Txn.sender] < self.user_goal_amount[Txn.sender]
     txn Sender
     intc_0 // 0
@@ -976,11 +1026,11 @@ withdraw:
     app_local_get_ex
     assert // check self.user_goal_amount exists for account
     <
-    // smart_contracts/savings_vault/contract.py:209-210
+    // smart_contracts/savings_vault/contract.py:229-230
     // self.lock_enabled[Txn.sender] == UInt64(1)
     // and self.user_total[Txn.sender] < self.user_goal_amount[Txn.sender]
     bz withdraw_after_if_else@7
-    // smart_contracts/savings_vault/contract.py:212
+    // smart_contracts/savings_vault/contract.py:232
     // assert penalty_sink.bytes == self.penalty_sink[Txn.sender]
     txn Sender
     intc_0 // 0
@@ -990,7 +1040,7 @@ withdraw:
     dig 2
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:213
+    // smart_contracts/savings_vault/contract.py:233
     // penalty = (amount * self.user_penalty_bps[Txn.sender]) // UInt64(10_000)
     txn Sender
     intc_0 // 0
@@ -1003,10 +1053,10 @@ withdraw:
     /
     dup
     bury 2
-    // smart_contracts/savings_vault/contract.py:214
+    // smart_contracts/savings_vault/contract.py:234
     // if penalty > UInt64(0):
     bz withdraw_after_if_else@7
-    // smart_contracts/savings_vault/contract.py:215
+    // smart_contracts/savings_vault/contract.py:235
     // assert amount > penalty
     dig 2
     dig 1
@@ -1014,7 +1064,7 @@ withdraw:
     cover 2
     >
     assert
-    // smart_contracts/savings_vault/contract.py:216
+    // smart_contracts/savings_vault/contract.py:236
     // itxn.Payment(receiver=penalty_sink, amount=penalty, fee=0).submit()
     itxn_begin
     itxn_field Amount
@@ -1027,7 +1077,7 @@ withdraw:
     itxn_submit
 
 withdraw_after_if_else@7:
-    // smart_contracts/savings_vault/contract.py:218
+    // smart_contracts/savings_vault/contract.py:238
     // self.user_total[Txn.sender] -= amount
     txn Sender
     dup
@@ -1042,18 +1092,29 @@ withdraw_after_if_else@7:
     bytec_0 // "user_total"
     swap
     app_local_put
-    // smart_contracts/savings_vault/contract.py:219
+    // smart_contracts/savings_vault/contract.py:239
     // self.total_deposited.value -= amount
     intc_0 // 0
-    bytec_2 // "total_deposited"
+    bytec_3 // "total_deposited"
     app_global_get_ex
     assert // check self.total_deposited exists
     dig 1
     -
-    bytec_2 // "total_deposited"
+    bytec_3 // "total_deposited"
     swap
     app_global_put
-    // smart_contracts/savings_vault/contract.py:220
+    // smart_contracts/savings_vault/contract.py:240
+    // self.vault_balance.value -= amount
+    intc_0 // 0
+    bytec_2 // "vault_balance"
+    app_global_get_ex
+    assert // check self.vault_balance exists
+    dig 1
+    -
+    bytec_2 // "vault_balance"
+    swap
+    app_global_put
+    // smart_contracts/savings_vault/contract.py:241
     // itxn.Payment(receiver=Txn.sender, amount=amount - penalty, fee=0).submit()
     itxn_begin
     txn Sender
@@ -1067,7 +1128,7 @@ withdraw_after_if_else@7:
     intc_0 // 0
     itxn_field Fee
     itxn_submit
-    // smart_contracts/savings_vault/contract.py:204
+    // smart_contracts/savings_vault/contract.py:224
     // @arc4.abimethod
     intc_1 // 1
     return
@@ -1075,7 +1136,7 @@ withdraw_after_if_else@7:
 
 // smart_contracts.savings_vault.contract.SavingsVault.setup_savings_pact[routing]() -> void:
 setup_savings_pact:
-    // smart_contracts/savings_vault/contract.py:222
+    // smart_contracts/savings_vault/contract.py:243
     // @arc4.abimethod
     txna ApplicationArgs 1
     dup
@@ -1104,59 +1165,59 @@ setup_savings_pact:
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/savings_vault/contract.py:230
+    // smart_contracts/savings_vault/contract.py:251
     // assert partner.bytes != Txn.sender.bytes
     dig 3
     txn Sender
     !=
     assert
-    // smart_contracts/savings_vault/contract.py:231
+    // smart_contracts/savings_vault/contract.py:252
     // assert required_amount >= UInt64(1_000_000)
     dig 2
     intc 4 // 1000000
     >=
     assert
-    // smart_contracts/savings_vault/contract.py:232
+    // smart_contracts/savings_vault/contract.py:253
     // assert cadence_seconds >= UInt64(86_400)
     dig 1
     pushint 86400
     >=
     assert
-    // smart_contracts/savings_vault/contract.py:233
+    // smart_contracts/savings_vault/contract.py:254
     // assert penalty_amount > UInt64(0)
     dup
     assert
-    // smart_contracts/savings_vault/contract.py:234
+    // smart_contracts/savings_vault/contract.py:255
     // self.pact_user_a.value = Txn.sender.bytes
-    bytec 11 // "pact_user_a"
+    bytec 12 // "pact_user_a"
     txn Sender
     app_global_put
-    // smart_contracts/savings_vault/contract.py:235
+    // smart_contracts/savings_vault/contract.py:256
     // self.pact_user_b.value = partner.bytes
-    bytec 12 // "pact_user_b"
+    bytec 13 // "pact_user_b"
     uncover 4
     app_global_put
-    // smart_contracts/savings_vault/contract.py:236
+    // smart_contracts/savings_vault/contract.py:257
     // self.pact_required_amount.value = required_amount
-    bytec 22 // "pact_required_amount"
+    bytec 21 // "pact_required_amount"
     uncover 3
     app_global_put
-    // smart_contracts/savings_vault/contract.py:237
+    // smart_contracts/savings_vault/contract.py:258
     // self.pact_cadence_seconds.value = cadence_seconds
-    bytec 9 // "pact_cadence_seconds"
+    bytec 10 // "pact_cadence_seconds"
     uncover 2
     app_global_put
-    // smart_contracts/savings_vault/contract.py:238
+    // smart_contracts/savings_vault/contract.py:259
     // self.pact_penalty_amount.value = penalty_amount
-    bytec 10 // "pact_penalty_amount"
+    bytec 11 // "pact_penalty_amount"
     swap
     app_global_put
-    // smart_contracts/savings_vault/contract.py:239
+    // smart_contracts/savings_vault/contract.py:260
     // self.pact_enabled.value = UInt64(1)
-    bytec 8 // "pact_enabled"
+    bytec 9 // "pact_enabled"
     intc_1 // 1
     app_global_put
-    // smart_contracts/savings_vault/contract.py:222
+    // smart_contracts/savings_vault/contract.py:243
     // @arc4.abimethod
     intc_1 // 1
     return
@@ -1164,7 +1225,7 @@ setup_savings_pact:
 
 // smart_contracts.savings_vault.contract.SavingsVault.apply_pact_penalty[routing]() -> void:
 apply_pact_penalty:
-    // smart_contracts/savings_vault/contract.py:241
+    // smart_contracts/savings_vault/contract.py:262
     // @arc4.abimethod
     txna ApplicationArgs 1
     dup
@@ -1180,84 +1241,84 @@ apply_pact_penalty:
     intc_1 // pay
     ==
     assert // transaction type is pay
-    // smart_contracts/savings_vault/contract.py:243
+    // smart_contracts/savings_vault/contract.py:264
     // assert self.pact_enabled.value == UInt64(1)
     intc_0 // 0
-    bytec 8 // "pact_enabled"
+    bytec 9 // "pact_enabled"
     app_global_get_ex
     assert // check self.pact_enabled exists
     intc_1 // 1
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:244
+    // smart_contracts/savings_vault/contract.py:265
     // assert penalty_payment.receiver == Global.current_application_address
     dup
     gtxns Receiver
     global CurrentApplicationAddress
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:245
+    // smart_contracts/savings_vault/contract.py:266
     // assert penalty_payment.sender == Txn.sender
     dup
     gtxns Sender
     txn Sender
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:246
+    // smart_contracts/savings_vault/contract.py:267
     // assert penalty_payment.amount >= self.pact_penalty_amount.value
     gtxns Amount
     dup
     intc_0 // 0
-    bytec 10 // "pact_penalty_amount"
+    bytec 11 // "pact_penalty_amount"
     app_global_get_ex
     assert // check self.pact_penalty_amount exists
     >=
     assert
-    // smart_contracts/savings_vault/contract.py:247
+    // smart_contracts/savings_vault/contract.py:268
     // assert self._is_valid_pact_pair(Txn.sender, partner) == UInt64(1)
     txn Sender
     dup
-    // smart_contracts/savings_vault/contract.py:303
+    // smart_contracts/savings_vault/contract.py:324
     // if sender.bytes == self.pact_user_a.value and partner.bytes == self.pact_user_b.value:
     intc_0 // 0
-    bytec 11 // "pact_user_a"
+    bytec 12 // "pact_user_a"
     app_global_get_ex
     assert // check self.pact_user_a exists
     ==
     bz apply_pact_penalty_after_if_else@4
     intc_0 // 0
-    bytec 12 // "pact_user_b"
+    bytec 13 // "pact_user_b"
     app_global_get_ex
     assert // check self.pact_user_b exists
     dig 3
     ==
     bz apply_pact_penalty_after_if_else@4
-    // smart_contracts/savings_vault/contract.py:304
+    // smart_contracts/savings_vault/contract.py:325
     // return UInt64(1)
     intc_1 // 1
 
 apply_pact_penalty_after_inlined_smart_contracts.savings_vault.contract.SavingsVault._is_valid_pact_pair@8:
-    // smart_contracts/savings_vault/contract.py:247
+    // smart_contracts/savings_vault/contract.py:268
     // assert self._is_valid_pact_pair(Txn.sender, partner) == UInt64(1)
     intc_1 // 1
     ==
     assert
-    // smart_contracts/savings_vault/contract.py:248
+    // smart_contracts/savings_vault/contract.py:269
     // assert Global.latest_timestamp > self.last_deposit[Txn.sender] + self.pact_cadence_seconds.value
     global LatestTimestamp
     txn Sender
     intc_0 // 0
-    bytec 16 // "last_deposit"
+    bytec 15 // "last_deposit"
     app_local_get_ex
     assert // check self.last_deposit exists for account
     intc_0 // 0
-    bytec 9 // "pact_cadence_seconds"
+    bytec 10 // "pact_cadence_seconds"
     app_global_get_ex
     assert // check self.pact_cadence_seconds exists
     +
     >
     assert
-    // smart_contracts/savings_vault/contract.py:249
+    // smart_contracts/savings_vault/contract.py:270
     // self.user_total[partner] += penalty_payment.amount
     dig 2
     dup
@@ -1272,27 +1333,27 @@ apply_pact_penalty_after_inlined_smart_contracts.savings_vault.contract.SavingsV
     bytec_0 // "user_total"
     swap
     app_local_put
-    // smart_contracts/savings_vault/contract.py:250
+    // smart_contracts/savings_vault/contract.py:271
     // self.total_deposited.value += penalty_payment.amount
     intc_0 // 0
-    bytec_2 // "total_deposited"
+    bytec_3 // "total_deposited"
     app_global_get_ex
     assert // check self.total_deposited exists
     dig 1
     +
-    bytec_2 // "total_deposited"
+    bytec_3 // "total_deposited"
     swap
     app_global_put
-    // smart_contracts/savings_vault/contract.py:251
+    // smart_contracts/savings_vault/contract.py:272
     // self.user_streak[Txn.sender] = UInt64(0)
     txn Sender
-    bytec 6 // "user_streak"
+    bytec 7 // "user_streak"
     intc_0 // 0
     app_local_put
-    // smart_contracts/savings_vault/contract.py:241
+    // smart_contracts/savings_vault/contract.py:262
     // @arc4.abimethod
     itob
-    bytec_3 // 0x151f7c75
+    bytec 4 // 0x151f7c75
     swap
     concat
     log
@@ -1300,41 +1361,41 @@ apply_pact_penalty_after_inlined_smart_contracts.savings_vault.contract.SavingsV
     return
 
 apply_pact_penalty_after_if_else@4:
-    // smart_contracts/savings_vault/contract.py:305
+    // smart_contracts/savings_vault/contract.py:326
     // if sender.bytes == self.pact_user_b.value and partner.bytes == self.pact_user_a.value:
     intc_0 // 0
-    bytec 12 // "pact_user_b"
+    bytec 13 // "pact_user_b"
     app_global_get_ex
     assert // check self.pact_user_b exists
     dig 1
     ==
     bz apply_pact_penalty_after_if_else@7
     intc_0 // 0
-    bytec 11 // "pact_user_a"
+    bytec 12 // "pact_user_a"
     app_global_get_ex
     assert // check self.pact_user_a exists
     dig 3
     ==
     bz apply_pact_penalty_after_if_else@7
-    // smart_contracts/savings_vault/contract.py:306
+    // smart_contracts/savings_vault/contract.py:327
     // return UInt64(1)
     intc_1 // 1
-    // smart_contracts/savings_vault/contract.py:247
+    // smart_contracts/savings_vault/contract.py:268
     // assert self._is_valid_pact_pair(Txn.sender, partner) == UInt64(1)
     b apply_pact_penalty_after_inlined_smart_contracts.savings_vault.contract.SavingsVault._is_valid_pact_pair@8
 
 apply_pact_penalty_after_if_else@7:
-    // smart_contracts/savings_vault/contract.py:307
+    // smart_contracts/savings_vault/contract.py:328
     // return UInt64(0)
     intc_0 // 0
-    // smart_contracts/savings_vault/contract.py:247
+    // smart_contracts/savings_vault/contract.py:268
     // assert self._is_valid_pact_pair(Txn.sender, partner) == UInt64(1)
     b apply_pact_penalty_after_inlined_smart_contracts.savings_vault.contract.SavingsVault._is_valid_pact_pair@8
 
 
 // smart_contracts.savings_vault.contract.SavingsVault.set_temptation_lock[routing]() -> void:
 set_temptation_lock:
-    // smart_contracts/savings_vault/contract.py:254
+    // smart_contracts/savings_vault/contract.py:275
     // @arc4.abimethod
     txna ApplicationArgs 1
     dup
@@ -1356,41 +1417,41 @@ set_temptation_lock:
     intc_3 // 32
     ==
     assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
-    // smart_contracts/savings_vault/contract.py:256
+    // smart_contracts/savings_vault/contract.py:277
     // assert goal_amount > UInt64(0)
     dig 2
     assert
-    // smart_contracts/savings_vault/contract.py:257
+    // smart_contracts/savings_vault/contract.py:278
     // assert penalty_bps <= UInt64(5000)
     dig 1
     pushint 5000
     <=
     assert
-    // smart_contracts/savings_vault/contract.py:258
+    // smart_contracts/savings_vault/contract.py:279
     // self.lock_enabled[Txn.sender] = UInt64(1)
     txn Sender
-    bytec 17 // "lock_enabled"
+    bytec 16 // "lock_enabled"
     intc_1 // 1
     app_local_put
-    // smart_contracts/savings_vault/contract.py:259
+    // smart_contracts/savings_vault/contract.py:280
     // self.user_goal_amount[Txn.sender] = goal_amount
     txn Sender
     bytec 24 // "user_goal_amount"
     uncover 4
     app_local_put
-    // smart_contracts/savings_vault/contract.py:260
+    // smart_contracts/savings_vault/contract.py:281
     // self.user_penalty_bps[Txn.sender] = penalty_bps
     txn Sender
     bytec 25 // "user_penalty_bps"
     uncover 3
     app_local_put
-    // smart_contracts/savings_vault/contract.py:261
+    // smart_contracts/savings_vault/contract.py:282
     // self.penalty_sink[Txn.sender] = penalty_sink.bytes
     txn Sender
     bytec 26 // "penalty_sink"
     uncover 2
     app_local_put
-    // smart_contracts/savings_vault/contract.py:254
+    // smart_contracts/savings_vault/contract.py:275
     // @arc4.abimethod
     intc_1 // 1
     return
@@ -1398,13 +1459,13 @@ set_temptation_lock:
 
 // smart_contracts.savings_vault.contract.SavingsVault.disable_temptation_lock[routing]() -> void:
 disable_temptation_lock:
-    // smart_contracts/savings_vault/contract.py:265
+    // smart_contracts/savings_vault/contract.py:286
     // self.lock_enabled[Txn.sender] = UInt64(0)
     txn Sender
-    bytec 17 // "lock_enabled"
+    bytec 16 // "lock_enabled"
     intc_0 // 0
     app_local_put
-    // smart_contracts/savings_vault/contract.py:263
+    // smart_contracts/savings_vault/contract.py:284
     // @arc4.abimethod
     intc_1 // 1
     return
@@ -1412,7 +1473,7 @@ disable_temptation_lock:
 
 // smart_contracts.savings_vault.contract.SavingsVault.set_dream_board[routing]() -> void:
 set_dream_board:
-    // smart_contracts/savings_vault/contract.py:267
+    // smart_contracts/savings_vault/contract.py:288
     // @arc4.abimethod
     txna ApplicationArgs 1
     dup
@@ -1436,19 +1497,19 @@ set_dream_board:
     ==
     assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
     extract 2 0
-    // smart_contracts/savings_vault/contract.py:269
+    // smart_contracts/savings_vault/contract.py:290
     // self.dream_uri[Txn.sender] = dream_uri
     txn Sender
-    bytec 30 // "dream_uri"
+    bytec 31 // "dream_uri"
     uncover 3
     app_local_put
-    // smart_contracts/savings_vault/contract.py:270
+    // smart_contracts/savings_vault/contract.py:291
     // self.dream_title[Txn.sender] = dream_title
     txn Sender
-    bytec 31 // "dream_title"
+    bytec 32 // "dream_title"
     uncover 2
     app_local_put
-    // smart_contracts/savings_vault/contract.py:267
+    // smart_contracts/savings_vault/contract.py:288
     // @arc4.abimethod
     intc_1 // 1
     return
@@ -1456,7 +1517,7 @@ set_dream_board:
 
 // smart_contracts.savings_vault.contract.SavingsVault.get_user_stats[routing]() -> void:
 get_user_stats:
-    // smart_contracts/savings_vault/contract.py:272
+    // smart_contracts/savings_vault/contract.py:293
     // @arc4.abimethod(readonly=True)
     txna ApplicationArgs 1
     dup
@@ -1464,7 +1525,7 @@ get_user_stats:
     intc_3 // 32
     ==
     assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
-    // smart_contracts/savings_vault/contract.py:274
+    // smart_contracts/savings_vault/contract.py:295
     // return arc4.Tuple((arc4.UInt64(self.user_total[user]), arc4.UInt64(self.user_milestone[user]), arc4.UInt64(self.user_streak[user])))
     dup
     intc_0 // 0
@@ -1474,13 +1535,13 @@ get_user_stats:
     itob
     dig 1
     intc_0 // 0
-    bytec 5 // "user_milestone"
+    bytec 6 // "user_milestone"
     app_local_get_ex
     assert // check self.user_milestone exists for account
     itob
     uncover 2
     intc_0 // 0
-    bytec 6 // "user_streak"
+    bytec 7 // "user_streak"
     app_local_get_ex
     assert // check self.user_streak exists for account
     itob
@@ -1488,9 +1549,9 @@ get_user_stats:
     concat
     swap
     concat
-    // smart_contracts/savings_vault/contract.py:272
+    // smart_contracts/savings_vault/contract.py:293
     // @arc4.abimethod(readonly=True)
-    bytec_3 // 0x151f7c75
+    bytec 4 // 0x151f7c75
     swap
     concat
     log
@@ -1500,22 +1561,22 @@ get_user_stats:
 
 // smart_contracts.savings_vault.contract.SavingsVault.get_global_stats[routing]() -> void:
 get_global_stats:
-    // smart_contracts/savings_vault/contract.py:278
+    // smart_contracts/savings_vault/contract.py:299
     // return arc4.Tuple((arc4.UInt64(self.total_deposited.value), arc4.UInt64(self.total_users.value)))
     intc_0 // 0
-    bytec_2 // "total_deposited"
+    bytec_3 // "total_deposited"
     app_global_get_ex
     assert // check self.total_deposited exists
     itob
     intc_0 // 0
-    bytec 7 // "total_users"
+    bytec 8 // "total_users"
     app_global_get_ex
     assert // check self.total_users exists
     itob
     concat
-    // smart_contracts/savings_vault/contract.py:276
+    // smart_contracts/savings_vault/contract.py:297
     // @arc4.abimethod(readonly=True)
-    bytec_3 // 0x151f7c75
+    bytec 4 // 0x151f7c75
     swap
     concat
     log
@@ -1525,35 +1586,35 @@ get_global_stats:
 
 // smart_contracts.savings_vault.contract.SavingsVault.get_pact_config[routing]() -> void:
 get_pact_config:
-    // smart_contracts/savings_vault/contract.py:283
+    // smart_contracts/savings_vault/contract.py:304
     // arc4.UInt64(self.pact_enabled.value),
     intc_0 // 0
-    bytec 8 // "pact_enabled"
+    bytec 9 // "pact_enabled"
     app_global_get_ex
     assert // check self.pact_enabled exists
     itob
-    // smart_contracts/savings_vault/contract.py:284
+    // smart_contracts/savings_vault/contract.py:305
     // arc4.UInt64(self.pact_required_amount.value),
     intc_0 // 0
-    bytec 22 // "pact_required_amount"
+    bytec 21 // "pact_required_amount"
     app_global_get_ex
     assert // check self.pact_required_amount exists
     itob
-    // smart_contracts/savings_vault/contract.py:285
+    // smart_contracts/savings_vault/contract.py:306
     // arc4.UInt64(self.pact_cadence_seconds.value),
     intc_0 // 0
-    bytec 9 // "pact_cadence_seconds"
+    bytec 10 // "pact_cadence_seconds"
     app_global_get_ex
     assert // check self.pact_cadence_seconds exists
     itob
-    // smart_contracts/savings_vault/contract.py:286
+    // smart_contracts/savings_vault/contract.py:307
     // arc4.UInt64(self.pact_penalty_amount.value),
     intc_0 // 0
-    bytec 10 // "pact_penalty_amount"
+    bytec 11 // "pact_penalty_amount"
     app_global_get_ex
     assert // check self.pact_penalty_amount exists
     itob
-    // smart_contracts/savings_vault/contract.py:282-287
+    // smart_contracts/savings_vault/contract.py:303-308
     // return arc4.Tuple((
     //     arc4.UInt64(self.pact_enabled.value),
     //     arc4.UInt64(self.pact_required_amount.value),
@@ -1567,9 +1628,9 @@ get_pact_config:
     concat
     swap
     concat
-    // smart_contracts/savings_vault/contract.py:280
+    // smart_contracts/savings_vault/contract.py:301
     // @arc4.abimethod(readonly=True)
-    bytec_3 // 0x151f7c75
+    bytec 4 // 0x151f7c75
     swap
     concat
     log
@@ -1579,11 +1640,11 @@ get_pact_config:
 
 // smart_contracts.savings_vault.contract.SavingsVault._mint_badge(name: bytes, unit: bytes, url: bytes) -> uint64:
 _mint_badge:
-    // smart_contracts/savings_vault/contract.py:309-310
+    // smart_contracts/savings_vault/contract.py:330-331
     // @subroutine
     // def _mint_badge(self, name: Bytes, unit: Bytes, url: Bytes) -> UInt64:
     proto 3 1
-    // smart_contracts/savings_vault/contract.py:311
+    // smart_contracts/savings_vault/contract.py:332
     // result = itxn.AssetConfig(total=1, decimals=0, asset_name=name, unit_name=unit, url=url, manager=Global.current_application_address, fee=0).submit()
     itxn_begin
     global CurrentApplicationAddress
@@ -1604,6 +1665,6 @@ _mint_badge:
     itxn_field Fee
     itxn_submit
     itxn CreatedAssetID
-    // smart_contracts/savings_vault/contract.py:312
+    // smart_contracts/savings_vault/contract.py:333
     // return result.created_asset.id
     retsub
