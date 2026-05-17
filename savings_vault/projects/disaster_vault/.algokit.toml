@@ -1,0 +1,17 @@
+[algokit]
+min_version = "v2.0.0"
+
+[project]
+type = 'contract'
+name = 'disaster_vault'
+artifacts = 'smart_contracts/artifacts'
+
+[project.deploy]
+command = "poetry run python -m smart_contracts deploy"
+
+[project.deploy.testnet]
+environment_secrets = ["DEPLOYER_MNEMONIC", "DISPENSER_MNEMONIC"]
+
+[project.run]
+build = { commands = ['poetry run python -m smart_contracts build'], description = 'Build contracts' }
+test = { commands = ['poetry run pytest'], description = 'Run tests' }

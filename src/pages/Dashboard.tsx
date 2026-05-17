@@ -18,6 +18,7 @@ import ProgressJourney from '../components/ProgressJourney'
 import AIChatbot from '../components/AIChatbot'
 import { generateVaultSummary, type VaultSummaryType } from '../services/aiService'
 import { getContractMode } from '../services/algorand'
+import AlertChannelsPanel from '../components/ops/AlertChannelsPanel'
 
 const BADGE_LEVEL_NAME: Record<number, string> = {
   0: 'Not earned',
@@ -31,14 +32,6 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const profileRef = useRef<HTMLDivElement | null>(null)
   const journeyRef = useRef<HTMLDivElement | null>(null)
-
-  const whatsappNumberRaw = String((import.meta as any).env?.VITE_TWILIO_WHATSAPP_NUMBER ?? '').trim()
-  const whatsappDigits = whatsappNumberRaw.replace(/^whatsapp:/i, '').replace(/\D/g, '')
-  const telegramBotUsername = String((import.meta as any).env?.VITE_TELEGRAM_BOT_USERNAME ?? '').trim().replace(/^@/, '')
-  const telegramUrl = telegramBotUsername ? `https://t.me/${telegramBotUsername}?start=guardian` : ''
-  const whatsappUrl = whatsappDigits
-    ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent('Hi AlgoVault Guardian')}`
-    : ''
 
   const [balance, setBalance] = useState('...')
   const [dataLoading, setDataLoading] = useState(true)
@@ -610,55 +603,17 @@ export default function Dashboard() {
 
         {/* GUARDIAN PORTAL */}
         <div className="rounded-2xl border border-gray-100 bg-white p-6 card-shadow">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
+          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+            <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Guardian Portal</p>
-              <p className="text-lg font-extrabold text-gray-900 tracking-tight mt-1">Omnichannel emergency trigger</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Message the Guardian AI on WhatsApp or Telegram. If it verifies a real disaster using live web sources, it can trigger <span className="font-mono">agentic_release()</span>.
+              <p className="text-lg font-extrabold text-gray-900 tracking-tight mt-1">Telegram Guardian</p>
+              <p className="text-xs text-gray-500 mt-1 max-w-prose">
+                Message the Guardian on Telegram. Verified disasters can trigger{' '}
+                <span className="font-mono">agentic_release()</span> on testnet.
               </p>
             </div>
-            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!whatsappUrl) return
-                  window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
-                }}
-                disabled={!whatsappUrl}
-                className={[
-                  'flex items-center justify-center gap-3 rounded-2xl px-6 py-4 font-bold transition-all',
-                  whatsappUrl
-                    ? 'bg-[#25D366] text-white hover:brightness-95 shadow-sm hover:shadow-md'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed',
-                ].join(' ')}
-              >
-                <svg width="22" height="22" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
-                  <path d="M19.11 17.18c-.28-.14-1.64-.81-1.89-.9-.25-.09-.44-.14-.62.14-.19.28-.71.9-.87 1.08-.16.19-.32.21-.6.07-.28-.14-1.17-.43-2.23-1.38-.83-.74-1.39-1.65-1.55-1.93-.16-.28-.02-.43.12-.57.12-.12.28-.32.41-.48.14-.16.19-.28.28-.46.09-.19.05-.35-.02-.5-.07-.14-.62-1.49-.85-2.05-.22-.53-.44-.46-.62-.46h-.53c-.19 0-.5.07-.76.35-.25.28-1 1-.98 2.44.02 1.44 1.03 2.83 1.17 3.03.14.19 2.03 3.1 4.92 4.34.69.3 1.22.48 1.64.62.69.22 1.31.19 1.8.12.55-.08 1.64-.67 1.87-1.31.23-.64.23-1.19.16-1.31-.07-.12-.25-.19-.53-.33z" />
-                  <path d="M16 3C8.82 3 3 8.67 3 15.67c0 2.2.6 4.25 1.66 6.03L3 29l7.55-1.98c1.72.92 3.7 1.45 5.45 1.45 7.18 0 13-5.67 13-12.67C29 8.67 23.18 3 16 3zm0 22.34c-1.62 0-3.5-.53-5.05-1.49l-.36-.21-4.48 1.17 1.2-4.23-.23-.4c-1-1.67-1.55-3.55-1.55-5.52C5.53 9.9 10.34 5.47 16 5.47c5.66 0 10.47 4.43 10.47 10.2S21.66 25.34 16 25.34z" />
-                </svg>
-                WhatsApp Guardian
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (!telegramUrl) return
-                  window.open(telegramUrl, '_blank', 'noopener,noreferrer')
-                }}
-                disabled={!telegramUrl}
-                className={[
-                  'flex items-center justify-center gap-3 rounded-2xl px-6 py-4 font-bold transition-all',
-                  telegramUrl
-                    ? 'bg-[#229ED9] text-white hover:brightness-95 shadow-sm hover:shadow-md'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed',
-                ].join(' ')}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M9.04 15.47l-.38 5.33c.55 0 .79-.24 1.08-.53l2.58-2.45 5.35 3.93c.98.54 1.68.26 1.93-.91l3.5-16.41c.32-1.49-.54-2.07-1.5-1.72L1.61 9.62c-1.43.55-1.41 1.34-.26 1.7l5.07 1.58L18.1 5.79c.55-.36 1.05-.16.64.2" />
-                </svg>
-                Telegram Guardian
-              </button>
+            <div className="w-full lg:max-w-md flex-shrink-0">
+              <AlertChannelsPanel variant="compact" telegramStart="guardian" />
             </div>
           </div>
         </div>

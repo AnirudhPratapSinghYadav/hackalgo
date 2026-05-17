@@ -1,0 +1,38 @@
+/**
+ * AlgoVault design tokens — sage-charcoal (lifted + green-tinted)
+ */
+:root {
+  --bg-primary: #151c18;
+  --bg-surface: #1d2822;
+  --bg-surface-secondary: #243329;
+  --bg-elevated: #2c3d34;
+
+  --text-primary: #f2f4ef;
+  --text-secondary: #c8d8cc;
+  --text-tertiary: #8fa896;
+  --text-inverse: #151c18;
+
+  --accent-primary: #92b89d;
+  --accent-hover: #a8ccb0;
+  --accent-primary-hover: var(--accent-hover);
+  --accent-primary-deep: #4d6b58;
+
+  --alert-critical: #d97a6f;
+  --alert-warning: #d4b04a;
+  --alert-success: #6aab7a;
+  --alert-info: #6ba8c4;
+
+  --border-subtle: rgba(180, 210, 190, 0.1);
+  --border-medium: rgba(180, 210, 190, 0.16);
+  --border-strong: rgba(120, 165, 135, 0.38);
+
+  --overlay-dark: rgba(21, 28, 24, 0.78);
+  --overlay-darker: rgba(21, 28, 24, 0.9);
+
+  --community-upvote: #a8ccb0;
+  --community-downvote: #d97a6f;
+  --community-verified: #6aab7a;
+  --community-pending: #d4b04a;
+
+  --sidebar-width: 240px;
+}

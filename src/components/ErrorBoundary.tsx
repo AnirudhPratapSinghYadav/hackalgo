@@ -1,46 +1,42 @@
-import type { ReactNode } from 'react'
-import React from 'react'
+import { Component, type ErrorInfo, type ReactNode } from 'react'
 
-type Props = { children: ReactNode }
-type State = { hasError: boolean; message?: string }
+interface Props {
+  children: ReactNode
+}
 
-export class ErrorBoundary extends React.Component<Props, State> {
-  state: State = { hasError: false }
+interface State {
+  error: Error | null
+}
 
-  static getDerivedStateFromError(err: unknown): State {
-    const message = err instanceof Error ? err.message : String(err)
-    return { hasError: true, message }
+export default class ErrorBoundary extends Component<Props, State> {
+  state: State = { error: null }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { error }
   }
 
-  componentDidCatch(err: unknown) {
-    // Keep minimal; avoid crashing production on unexpected wallet/runtime issues.
-    console.error('[AlgoVault] UI crash recovered by ErrorBoundary:', err)
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('AlgoVault UI error', error, info.componentStack)
   }
 
   render() {
-    if (!this.state.hasError) return this.props.children
-
-    return (
-      <div className="min-h-screen bg-[#f8f9fb] font-sans flex items-center justify-center px-6">
-        <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-bold text-red-600 uppercase tracking-widest">Recovered</p>
-          <h1 className="text-lg font-extrabold text-gray-900 mt-2">Something went wrong</h1>
-          <p className="text-sm text-gray-600 mt-2">
-            The app hit an unexpected error. Your funds are safe — this is only the UI.
-          </p>
-          <p className="text-[11px] font-mono text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 mt-4 break-all">
-            {this.state.message ?? 'Unknown error'}
-          </p>
-          <button
-            type="button"
-            className="mt-4 w-full py-3 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white text-sm font-semibold"
-            onClick={() => window.location.reload()}
-          >
-            Reload
-          </button>
+    if (this.state.error) {
+      return (
+        <div className="min-h-[40vh] flex items-center justify-center p-8">
+          <div className="max-w-md text-center border border-border-subtle rounded-lg p-6 bg-bg-surface">
+            <h2 className="font-serif text-xl text-text-primary">Something went wrong</h2>
+            <p className="mt-2 text-sm text-text-secondary">{this.state.error.message}</p>
+            <button
+              type="button"
+              className="mt-4 px-4 py-2 text-sm bg-accent-primary text-white rounded"
+              onClick={() => this.setState({ error: null })}
+            >
+              Try again
+            </button>
+          </div>
         </div>
-      </div>
-    )
+      )
+    }
+    return this.props.children
   }
 }
-

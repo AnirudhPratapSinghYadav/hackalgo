@@ -3,3 +3,5 @@ dist/
 ts_errors.txt
 .env
 .env.local
+scripts/bot/data/*.json
+!scripts/bot/data/.gitkeep

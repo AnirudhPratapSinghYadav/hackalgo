@@ -1,617 +1,665 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import WalletConnect from '../components/WalletConnect'
-import { getGlobalStats } from '../services/algorand'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { differenceInDays } from 'date-fns'
+import { ChevronDown, ExternalLink, Radio, ShieldCheck, Zap, Wallet } from 'lucide-react'
+import { useWallet } from '@txnlab/use-wallet-react'
+import { useOpsSession } from '../context/OpsSessionContext'
+import { ROUTES } from '../config/routes'
+import { DEMO_CORE_FOCUS } from '../config/demoFocus'
+import ActDivider from '../components/landing/ActDivider'
+import { ScrollProgressBar, StoryRail } from '../components/landing/StoryProgress'
+import '../styles/landing.css'
 
-const STORY_CARDS = [
+const fade = {
+  initial: { opacity: 0, y: 20 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-40px' },
+  transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+}
+
+const DOC = {
+  biharRooftops:
+    'https://upload.wikimedia.org/wikipedia/commons/7/7f/An_aerial_view_of_the_flood_affected_village_where_the_people_are_sitting_on_the_top_of_their_houses_in_Bihar.jpg',
+  pakistanFloodAerial:
+    'https://upload.wikimedia.org/wikipedia/commons/b/bf/Arial_images_of_Pakistani_flood_devastation_%284967890124%29.jpg',
+  pakistanRoadGone:
+    'https://upload.wikimedia.org/wikipedia/commons/a/a1/Pakistan_flood_damage_2010.jpg',
+  ethiopiaWaterCrisis:
+    'https://upload.wikimedia.org/wikipedia/commons/8/82/Water_Shortage_in_Ethiopia_%28935%29.jpg',
+  ethiopiaDroughtSatellite:
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Drought_in_Ethiopia%2C_Natural_Hazards_DVIDS833583.jpg/1920px-Drought_in_Ethiopia%2C_Natural_Hazards_DVIDS833583.jpg',
+  myanmarFloodSatellite:
+    'https://upload.wikimedia.org/wikipedia/commons/c/c6/Flooded_Myanmar_ESA345485.jpg',
+} as const
+
+const STATS = [
   {
-    title: 'A village flood reserve',
-    subtitle: 'When roads closed, the fund was ready.',
-    img: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    tag: 'Disaster Reserve',
-    tagClass: 'text-emerald-700 bg-emerald-50 border-emerald-100',
+    stat: '$395B',
+    label: 'Annual climate loss',
+    context:
+      'Most of it never becomes cash in a survivor’s hand on day one. It becomes lines in a spreadsheet—and a press release.',
   },
   {
-    title: 'Education fund for one girl',
-    subtitle: 'Many contributors. One future.',
-    img: 'https://images.pexels.com/photos/5212345/pexels-photo-5212345.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    tag: 'Guardian Vault',
-    tagClass: 'text-blue-700 bg-blue-50 border-blue-100',
+    stat: '0',
+    label: 'Operational speed of legacy loss & damage',
+    context:
+      'By the time convoys clear and camps empty, institutional “relief” is often still inside compliance, not inside wallets.',
   },
   {
-    title: 'A promise kept for parents',
-    subtitle: 'No excuses. Code enforces the plan.',
-    img: 'https://images.pexels.com/photos/7551442/pexels-photo-7551442.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    tag: 'Protection',
-    tagClass: 'text-amber-700 bg-amber-50 border-amber-100',
-  },
-  {
-    title: 'Transparent community trust',
-    subtitle: 'Every contribution is verifiable.',
-    img: 'https://images.pexels.com/photos/3184436/pexels-photo-3184436.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    tag: 'On-Chain Proof',
-    tagClass: 'text-violet-700 bg-violet-50 border-violet-100',
+    stat: '7 YRS',
+    label: 'What survivors wait for, on average',
+    context:
+      'Seven years is not a funding gap. It is a life rebuilt without the money that was already promised.',
   },
 ]
 
-function SmartImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
-  const [failed, setFailed] = useState(false)
+type StoryChapter = {
+  id: string
+  chapter: string
+  tone: 'night' | 'dawn'
+  brightImage?: boolean
+  image: string
+  imageAlt: string
+  kicker: string
+  title: string
+  lead: string
+  body: string
+  aside?: string
+}
 
-  if (failed) {
-    return (
-      <div className={`relative ${className ?? ''}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0e27] via-[#1e1b4b] to-[#2563EB] opacity-60" />
-        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-        <div className="absolute inset-0 flex items-end p-4">
-          <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2">
-            <p className="text-white text-sm font-semibold leading-tight">{alt}</p>
-            <p className="text-white/50 text-xs mt-0.5">Image unavailable — showing fallback</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+const STORY_CRISIS: StoryChapter[] = [
+  {
+    id: 'ch-1',
+    chapter: '01',
+    tone: 'night',
+    image: DOC.pakistanFloodAerial,
+    imageAlt: 'Aerial view of flood devastation, southern Pakistan',
+    kicker: 'South Asia · 2010 monsoon',
+    title: 'The water does not wait for a treasury wire.',
+    lead: 'Brown floodwater erases roads in hours. Pledges stay trapped in coordination calls while mud closes the only ground route.',
+    body: 'Disaster is synchronous; disbursement is deliberately asynchronous. People tread water during someone else’s risk committee.',
+  },
+  {
+    id: 'ch-2',
+    chapter: '02',
+    tone: 'night',
+    image: DOC.ethiopiaWaterCrisis,
+    imageAlt: 'Water shortage and drought in Ethiopia',
+    kicker: 'Horn of Africa · failed rains',
+    title: 'Drought does not issue invoices.',
+    lead: 'When rains ghost the sky, pastoralists borrow against a season that will not arrive.',
+    body: 'The Horn needs water, pasture, and cash that clears before dignity curdles into dependency. Latency is a second crisis.',
+    aside: 'Funds never reach on time. The body does not pause for procurement.',
+  },
+  {
+    id: 'ch-3',
+    chapter: '03',
+    tone: 'night',
+    image: DOC.pakistanRoadGone,
+    imageAlt: 'Pakistan floods: washed-out ground access',
+    kicker: 'Infrastructure erased',
+    title: 'Bureaucracy assumes bridges.',
+    lead: 'Floodwater has washed away the road; the voucher assumes you can still reach the tehsil office.',
+    body: 'Every destroyed culvert is a denial-of-service attack on relief. The poorest pay twice: once in loss, again in queues.',
+  },
+  {
+    id: 'ch-4',
+    chapter: '04',
+    tone: 'night',
+    image: DOC.biharRooftops,
+    imageAlt: 'Bihar flood: families shelter on rooftops',
+    kicker: 'Bihar · human scale',
+    title: 'On the roof is not safety. It is the last geometry left.',
+    lead: 'Families marooned above brown water—visible from the air, invisible to systems that still ask for originals in triplicate.',
+    body: 'If you can see them from a helicopter and not from an operations console the same afternoon, your architecture is still decorative.',
+  },
+]
 
+const STORY_RESOLVE: StoryChapter[] = [
+  {
+    id: 'ch-5',
+    chapter: '05',
+    tone: 'dawn',
+    brightImage: true,
+    image: DOC.ethiopiaDroughtSatellite,
+    imageAlt: 'NASA satellite: drought-stressed vegetation in Ethiopia',
+    kicker: 'Detection · NASA MODIS',
+    title: 'The failure is already a colour on a map.',
+    lead: 'From orbit, failed rains sketch a bruise across the highlands—brown against cream where pasture should be green.',
+    body: 'AlgoVault fuses satellite anomaly with ground truth and human attestation so money moves on evidence—not on optimism.',
+  },
+  {
+    id: 'ch-6',
+    chapter: '06',
+    tone: 'dawn',
+    brightImage: true,
+    image: DOC.myanmarFloodSatellite,
+    imageAlt: 'Sentinel-1 radar: monsoon flooding extent in Myanmar',
+    kicker: 'Extent · Sentinel-1',
+    title: 'Water does not respect borders. Neither should verification latency.',
+    lead: 'Radar sees through cloud—278,000 hectares drowned while ministries argue over scope.',
+    body: 'Detect → approve → trigger → receive—with signatures that mean something in court and timestamps that mean something in a village.',
+  },
+]
+
+const SDG_GOALS = [
+  {
+    id: '13',
+    title: 'Climate Action',
+    color: '#3f7e44',
+    summary:
+      'AlgoVault targets the gap between climate loss pledges and last-mile payouts—compressing the years between COP promises and rupees in a survivor’s hand.',
+  },
+  {
+    id: '1',
+    title: 'No Poverty',
+    color: '#e5243b',
+    summary:
+      'Verified disbursement routes cash directly to households after floods and drought—bypassing the queues that keep the poorest in informal debt.',
+  },
+  {
+    id: '11',
+    title: 'Sustainable Cities & Communities',
+    color: '#fd9d24',
+    summary:
+      'When infrastructure fails, communities need money before municipalities rebuild bridges. We model release tied to geotagged disaster proof, not paperwork seasons.',
+  },
+  {
+    id: '16',
+    title: 'Peace, Justice & Strong Institutions',
+    color: '#00689d',
+    summary:
+      'Every release is auditable on-chain with human sign-off in the loop—institutional trust without opacity, corruption, or “processing” without a timestamp.',
+  },
+]
+
+const INSTITUTIONAL_LINKS = [
+  {
+    abbr: 'WHO',
+    name: 'World Health Organization',
+    url: 'https://www.who.int/emergencies',
+  },
+  {
+    abbr: 'UNHCR',
+    name: 'UN Refugee Agency',
+    url: 'https://www.unhcr.org/',
+  },
+  {
+    abbr: 'UN OCHA',
+    name: 'UN Office for the Coordination of Humanitarian Affairs',
+    url: 'https://www.unocha.org/',
+  },
+  {
+    abbr: 'UNFCCC',
+    name: 'UN Climate Change · Loss & Damage',
+    url: 'https://unfccc.int/process-and-meetings/bodies/tp/sb-sbi-matters/loss-and-damage',
+  },
+  {
+    abbr: 'CERF',
+    name: 'UN Central Emergency Response Fund',
+    url: 'https://cerf.un.org/',
+  },
+  {
+    abbr: 'WFP',
+    name: 'World Food Programme',
+    url: 'https://www.wfp.org/',
+  },
+  {
+    abbr: 'UNDRR',
+    name: 'UN Office for Disaster Risk Reduction',
+    url: 'https://www.undrr.org/',
+  },
+  {
+    abbr: 'OHCHR',
+    name: 'UN Human Rights · protection in crises',
+    url: 'https://www.ohchr.org/',
+  },
+]
+
+const PROTOCOL_STEPS = [
+  { icon: Radio, title: 'Detect', body: 'Guardian AI ingests satellite imagery, IMD alerts, and GDACS events.', step: '01' },
+  { icon: ShieldCheck, title: 'Approve', body: 'Field officers attest with geotagged proof. Human authority signs before release.', step: '02' },
+  { icon: Zap, title: 'Trigger', body: 'Multi-sig vault conditions met. Disbursement executes on Algorand testnet.', step: '03' },
+  { icon: Wallet, title: 'Receive', body: 'Verified beneficiaries receive funds via Pera, SMS, or MoneyGram—with full audit trail.', step: '04' },
+]
+
+function BackgroundMedia({ src, alt }: { src: string; alt: string }) {
   return (
-    <img
-      src={src}
-      alt={alt}
-      className={className}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-    />
+    <div className="landing-media" aria-hidden>
+      <img src={src} alt={alt} />
+    </div>
   )
 }
 
-const USE_CASES = [
-  {
-    title: 'Education Guardian Vault',
-    desc: 'Multiple contributors save together for one child\'s future. The beneficiary receives funds when she turns 18 — no bank, no lawyer, just a trustless promise.',
-    accent: 'from-blue-500 to-violet-600',
-    border: 'border-blue-200/60 hover:border-blue-300',
-    tag: 'Guardian',
-    tagColor: 'text-blue-700 bg-blue-50 border-blue-100',
-    icon: (
-      <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-    ),
-    link: '/vault/guardian',
-  },
-  {
-    title: 'Community Disaster Reserve',
-    desc: 'Villagers pool savings into a transparent emergency fund. When floods, cyclones, or crises strike — the reserve is already ready. On-chain. Auditable.',
-    accent: 'from-emerald-500 to-teal-600',
-    border: 'border-emerald-200/60 hover:border-emerald-300',
-    tag: 'Community',
-    tagColor: 'text-emerald-700 bg-emerald-50 border-emerald-100',
-    icon: (
-      <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-    ),
-    link: '/vault/community',
-  },
-  {
-    title: 'Savings Pact & Protection',
-    desc: 'Lock accountability with a partner on-chain. Set goals, design your own consequences for early withdrawal, and earn milestone badges that prove discipline.',
-    accent: 'from-amber-500 to-orange-600',
-    border: 'border-amber-200/60 hover:border-amber-300',
-    tag: 'Accountability',
-    tagColor: 'text-amber-700 bg-amber-50 border-amber-100',
-    icon: (
-      <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-    ),
-    link: '/dashboard',
-  },
-]
+function StoryScrim({ alignRight, heavy }: { alignRight: boolean; heavy?: boolean }) {
+  return (
+    <>
+      <div
+        className={`absolute inset-0 z-[1] pointer-events-none ${
+          heavy ? 'bg-[#151c18]/68' : 'bg-[#151c18]/58'
+        }`}
+        aria-hidden
+      />
+      <div
+        className={`absolute inset-0 z-[1] pointer-events-none ${
+          alignRight
+            ? 'bg-gradient-to-l from-[#151c18]/92 via-[#151c18]/72 to-transparent'
+            : 'bg-gradient-to-r from-[#151c18]/92 via-[#151c18]/72 to-transparent'
+        }`}
+        aria-hidden
+      />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#151c18]/90 via-transparent to-[#151c18]/55 pointer-events-none" aria-hidden />
+    </>
+  )
+}
 
-const STEPS = [
-  {
-    num: '01',
-    title: 'Create a Vault',
-    desc: 'Set the purpose, savings goal, and beneficiary. Choose whether it\'s for education, disaster preparedness, or personal accountability.',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" /></svg>
-    ),
-  },
-  {
-    num: '02',
-    title: 'Contributors Deposit',
-    desc: 'Multiple people contribute ALGO to the same vault. Every deposit is an atomic transaction — payment and state update happen together or not at all.',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-    ),
-  },
-  {
-    num: '03',
-    title: 'Goal Reached — Funds Release',
-    desc: 'When the savings goal is met, funds can be released to the beneficiary. On-chain, transparent, verifiable — no intermediary can stop it.',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" /></svg>
-    ),
-  },
-]
-
-export default function Landing() {
-  const walletRef = useRef<HTMLDivElement>(null)
-  const [stats, setStats] = useState({ totalDeposited: 0, totalUsers: 0 })
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'))
-    if (nodes.length === 0) return
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (!e.isIntersecting) continue
-          const el = e.target as HTMLElement
-          el.classList.add('reveal-in')
-          io.unobserve(el)
-        }
-      },
-      { threshold: 0.12 },
-    )
-
-    for (const n of nodes) io.observe(n)
-    return () => io.disconnect()
-  }, [])
-
-  useEffect(() => {
-    getGlobalStats()
-      .then((s) => { setStats({ totalDeposited: s.totalDeposited, totalUsers: s.totalUsers }); setLoaded(true) })
-      .catch(() => setLoaded(true))
-  }, [])
-
-  const scrollToWallet = () => {
-    walletRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-
-  const totalAlgo = useMemo(() => (stats.totalDeposited / 1_000_000).toFixed(2), [stats.totalDeposited])
+function StoryPanel({ chapter, index }: { chapter: StoryChapter; index: number }) {
+  const isNight = chapter.tone === 'night'
+  const alignRight = index % 2 === 1
+  const badgeClass = isNight
+    ? 'text-[#e8b4ae] border-[#7c3b35]/50 bg-[#7c3b35]/25'
+    : 'text-[#8fb39a] border-[#506a5a]/50 bg-[#506a5a]/25'
 
   return (
-    <div className="min-h-screen font-sans bg-white">
-      {/* NAVBAR */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100/80">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7c3aed] flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-            </div>
-            <span className="font-bold text-lg text-gray-900 tracking-tight">AlgoVault</span>
+    <section className="relative z-20 min-h-[100svh] flex items-center overflow-hidden isolate">
+      <BackgroundMedia src={chapter.image} alt={chapter.imageAlt} />
+      <StoryScrim alignRight={alignRight} heavy={chapter.brightImage} />
+
+      <span
+        className="absolute bottom-6 right-4 sm:right-8 font-serif text-[clamp(4rem,14vw,10rem)] leading-none text-white/[0.05] select-none z-[2] pointer-events-none"
+        aria-hidden
+      >
+        {chapter.chapter}
+      </span>
+
+      <div
+        className={`relative z-10 w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 py-24 sm:py-28 lg:py-32 xl:pr-14 flex ${
+          alignRight ? 'justify-end' : 'justify-start'
+        }`}
+      >
+        <motion.article
+          className={`landing-copy-panel w-full max-w-lg sm:max-w-xl lg:max-w-2xl rounded-2xl p-7 sm:p-9 lg:p-10 ${
+            alignRight ? 'text-right' : 'text-left'
+          }`}
+          initial={{ opacity: 0, y: 24, x: alignRight ? 16 : -16 }}
+          whileInView={{ opacity: 1, y: 0, x: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className={`flex flex-wrap items-center gap-2 sm:gap-3 mb-5 ${alignRight ? 'justify-end' : ''}`}>
+            <span className={`font-mono text-xs px-2.5 py-1 rounded border ${badgeClass}`}>{chapter.chapter}</span>
+            <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[#a7aca2]">{chapter.kicker}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Algorand Testnet
-            </div>
-            <button
-              onClick={scrollToWallet}
-              className="px-5 py-2 bg-gradient-to-r from-[#2563EB] to-[#7c3aed] text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:shadow-blue-500/20 transition-all"
+
+          <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl xl:text-[2.75rem] text-[#f3f1eb] leading-[1.02] tracking-tight">
+            {chapter.title}
+          </h2>
+          <p className="font-sans text-base sm:text-lg text-[#e8ebe4] mt-5 leading-relaxed">{chapter.lead}</p>
+          <div
+            className={`h-px w-14 my-7 bg-gradient-to-r ${
+              alignRight ? 'ml-auto from-transparent to-white/40' : 'from-white/40 to-transparent'
+            }`}
+          />
+          <p className="font-sans text-sm sm:text-base text-[#c8cdc4] leading-relaxed">{chapter.body}</p>
+
+          {chapter.aside ? (
+            <p
+              className={`font-serif text-lg sm:text-xl text-[#f3f1eb] mt-8 italic leading-snug border-[#7c3b35] ${
+                alignRight ? 'border-r-[3px] pr-5' : 'border-l-[3px] pl-5'
+              }`}
             >
-              Connect Wallet
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* HERO */}
-      <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0e27] via-[#111827] to-[#1e1b4b]" />
-
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '32px 32px' }}
-        />
-
-        {/* Glow orbs */}
-        <div className="absolute top-1/4 left-[10%] w-72 h-72 bg-blue-500/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-[15%] w-56 h-56 bg-violet-500/10 rounded-full blur-[100px]" />
-        <div className="absolute top-[60%] left-[50%] w-40 h-40 bg-emerald-500/8 rounded-full blur-[80px]" />
-
-        <div className="relative z-10 max-w-6xl mx-auto px-5 sm:px-6 py-16 sm:py-20 lg:py-0 w-full">
-          <div className="grid lg:grid-cols-12 gap-10 items-center">
-            <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2 bg-white/[0.07] backdrop-blur-sm px-4 py-2 rounded-full mb-6 border border-white/[0.08]">
-              <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-              <span className="text-white/70 text-xs font-semibold">Secured by Algorand Blockchain</span>
-            </div>
-
-            <h1 className="text-white font-extrabold text-[2.5rem] sm:text-5xl lg:text-[3.5rem] leading-[1.08] mb-6 tracking-tight">
-              Promises that live<br />
-              <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">on the blockchain</span>
-            </h1>
-
-            <p className="text-white/45 text-base sm:text-lg leading-relaxed max-w-2xl mb-10">
-              A trustless savings platform where communities fund education, prepare for disasters,
-              and protect those who can't protect themselves. Every contribution is transparent.
-              Every promise is enforced by code.
+              {chapter.aside}
             </p>
+          ) : null}
+        </motion.article>
+      </div>
+    </section>
+  )
+}
 
-            <div className="flex flex-col sm:flex-row gap-3 mb-12">
-              <button
-                onClick={scrollToWallet}
-                className="px-8 py-4 bg-gradient-to-r from-[#2563EB] to-[#7c3aed] text-white font-semibold rounded-xl text-base hover:shadow-xl hover:shadow-blue-500/25 transition-all"
-              >
-                Start Contributing
-              </button>
-              <a
-                href="#use-cases"
-                className="px-8 py-4 bg-white/[0.07] backdrop-blur-sm text-white font-semibold rounded-xl text-base border border-white/[0.08] hover:bg-white/[0.12] transition-all text-center"
-              >
-                See Real Use Cases
-              </a>
-            </div>
+export default function Landing() {
+  const [copDays, setCopDays] = useState(0)
+  const navigate = useNavigate()
+  const { wallets } = useWallet()
+  const { connect, enterDemoMode } = useOpsSession()
 
-            <div className="flex flex-wrap gap-x-8 gap-y-4 pt-6 border-t border-white/[0.06]">
-              <div>
-                <div className="text-white font-bold text-2xl tracking-tight">
-                  {loaded ? totalAlgo : '...'}
-                </div>
-                <div className="text-white/30 text-xs mt-0.5">ALGO Saved</div>
-              </div>
-              <div>
-                <div className="text-white font-bold text-2xl tracking-tight">
-                  {loaded ? stats.totalUsers : '...'}
-                </div>
-                <div className="text-white/30 text-xs mt-0.5">Contributors</div>
-              </div>
-              <div>
-                <div className="text-white font-bold text-2xl tracking-tight">100%</div>
-                <div className="text-white/30 text-xs mt-0.5">On-Chain</div>
-              </div>
-              <div>
-                <div className="text-white font-bold text-2xl tracking-tight">&lt;3s</div>
-                <div className="text-white/30 text-xs mt-0.5">Finality</div>
-              </div>
-            </div>
-            </div>
+  const peraReady = wallets?.some((w) => String(w.id).toLowerCase() === 'pera')
+  const deflyReady = wallets?.some((w) => String(w.id).toLowerCase() === 'defly')
 
-            {/* REAL-LIFE IMAGE COLLAGE */}
-            <div className="hidden lg:block lg:col-span-5">
-              <div className="relative">
-                <div className="absolute -inset-6 bg-gradient-to-br from-blue-500/10 via-violet-500/10 to-emerald-500/10 rounded-[32px] blur-2xl" />
+  useEffect(() => {
+    setCopDays(differenceInDays(new Date(), new Date('2022-11-20')))
+  }, [])
 
-                <div className="relative grid grid-cols-2 gap-4">
-                  <div className="col-span-2 rounded-2xl overflow-hidden border border-white/[0.10] shadow-2xl shadow-black/25 reveal" data-reveal>
-                    <SmartImage
-                      src="https://images.pexels.com/photos/7551442/pexels-photo-7551442.jpeg?auto=compress&cs=tinysrgb&w=1800"
-                      alt="Guardian promise"
-                      className="w-full h-44 object-cover"
-                    />
-                    <div className="p-4 bg-white/[0.04]">
-                      <p className="text-white font-semibold text-sm">Save for someone who can’t save yet</p>
-                      <p className="text-white/50 text-xs mt-1">A promise kept by code — not trust.</p>
-                    </div>
-                  </div>
+  const handlePera = async () => {
+    try {
+      await connect('pera')
+      navigate('/operations')
+    } catch {
+      /* cancelled */
+    }
+  }
 
-                  <div className="rounded-2xl overflow-hidden border border-white/[0.10] bg-white/[0.04] shadow-xl shadow-black/20 reveal" data-reveal>
-                    <SmartImage
-                      src="https://images.pexels.com/photos/5212345/pexels-photo-5212345.jpeg?auto=compress&cs=tinysrgb&w=1400"
-                      alt="Education"
-                      className="w-full h-44 object-cover"
-                    />
-                    <div className="p-3">
-                      <span className="text-[10px] font-bold text-blue-200/90 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-full uppercase tracking-wider">
-                        Education
-                      </span>
-                      <p className="text-white/70 text-xs mt-2 leading-relaxed">One goal. Many contributors.</p>
-                    </div>
-                  </div>
+  const handleDefly = async () => {
+    try {
+      await connect('defly')
+      navigate('/operations')
+    } catch {
+      /* cancelled */
+    }
+  }
 
-                  <div className="rounded-2xl overflow-hidden border border-white/[0.10] bg-white/[0.04] shadow-xl shadow-black/20 reveal" data-reveal>
-                    <SmartImage
-                      src="https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg?auto=compress&cs=tinysrgb&w=1400"
-                      alt="Disaster reserve"
-                      className="w-full h-44 object-cover"
-                    />
-                    <div className="p-3">
-                      <span className="text-[10px] font-bold text-emerald-200/90 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full uppercase tracking-wider">
-                        Disaster Reserve
-                      </span>
-                      <p className="text-white/70 text-xs mt-2 leading-relaxed">Transparency when it matters.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+  const handleDemo = () => {
+    enterDemoMode()
+    navigate('/operations')
+  }
 
-      {/* PREMIUM STORYTELLING (Humanitarian Intelligence Platform) */}
-      <section className="py-16 sm:py-20 bg-gradient-to-b from-white to-[#f8f9fb] border-t border-gray-100">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <div className="text-center mb-10 reveal" data-reveal>
-            <span className="text-xs font-bold text-[#2563EB] uppercase tracking-widest">Humanitarian Intelligence</span>
-            <h2 className="text-gray-900 font-extrabold text-3xl sm:text-4xl mt-3 tracking-tight">
-              Crisis intelligence that feels premium — and proves itself on-chain
-            </h2>
-            <p className="text-gray-500 mt-4 max-w-3xl mx-auto leading-relaxed">
-              AlgoVault pairs AI crisis verification with Algorand-native transparency, so decisions are explainable,
-              auditable, and fast — even under pressure.
-            </p>
-          </div>
+  return (
+    <div className="landing-root bg-[#151c18] text-[#f3f1eb] min-h-screen overflow-x-hidden">
+      <ScrollProgressBar />
+      <StoryRail />
 
-          <div className="grid lg:grid-cols-12 gap-6">
-            {/* SECTION A */}
-            <div className="lg:col-span-5 rounded-3xl border border-gray-100 bg-white p-7 card-shadow reveal" data-reveal>
-              <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest">Respond to Crisis from Anywhere</p>
-              <h3 className="text-gray-900 font-extrabold text-xl mt-2 tracking-tight">WhatsApp + Telegram + AI alerts</h3>
-              <p className="text-sm text-gray-500 mt-3 leading-relaxed">
-                Message the Guardian like a human. It understands intent, handles typos, remembers context, and responds
-                with verified briefs — not robotic replies.
-              </p>
-              <div className="mt-5 grid grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Channel</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <svg className="w-5 h-5" viewBox="0 0 32 32" aria-hidden="true">
-                      <path fill="#25D366" d="M16 3C9.1 3 3.5 8.6 3.5 15.5c0 2.6.8 5.1 2.2 7.2L4 29l6.5-1.7c2 1.1 4.2 1.7 6.5 1.7 6.9 0 12.5-5.6 12.5-12.5S22.9 3 16 3z"/>
-                      <path fill="#fff" d="M12.3 9.6c-.3-.7-.6-.7-.9-.7h-.8c-.3 0-.7.1-1 .5-.3.4-1.3 1.2-1.3 3 0 1.8 1.3 3.5 1.5 3.8.2.2 2.6 4.1 6.3 5.6 3.1 1.3 3.7 1 4.4.9.7-.1 2.2-.9 2.5-1.8.3-.9.3-1.6.2-1.8-.1-.2-.3-.3-.6-.5-.3-.1-2.2-1.1-2.6-1.2-.3-.1-.6-.1-.9.2-.3.3-1 1.2-1.2 1.4-.2.2-.5.3-.8.1-.3-.1-1.4-.5-2.6-1.6-1-.9-1.6-2-1.8-2.3-.2-.3 0-.5.1-.7.2-.2.3-.5.5-.7.2-.2.3-.4.4-.7.1-.2.1-.5 0-.7-.1-.2-.8-2-.9-2.3z"/>
-                    </svg>
-                    <p className="text-sm font-extrabold text-gray-900">WhatsApp</p>
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Channel</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <svg className="w-5 h-5" viewBox="0 0 32 32" aria-hidden="true">
-                      <path fill="#229ED9" d="M16 3C8.8 3 3 8.8 3 16s5.8 13 13 13 13-5.8 13-13S23.2 3 16 3z"/>
-                      <path fill="#fff" d="M23.6 10.2l-2.6 12.4c-.2.9-.7 1.1-1.5.7l-4.1-3-2 1.9c-.2.2-.4.4-.8.4l.3-4.5 8.1-7.3c.4-.3-.1-.5-.6-.2l-10 6.3-4.3-1.4c-.9-.3-.9-.9.2-1.3l16.7-6.5c.8-.3 1.5.2 1.2 1.5z"/>
-                    </svg>
-                    <p className="text-sm font-extrabold text-gray-900">Telegram</p>
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Brain</p>
-                  <p className="text-sm font-extrabold text-gray-900 mt-2">On‑Chain Proof</p>
-                  <p className="text-[11px] text-gray-500 mt-1">Algorand + Lora</p>
-                </div>
-              </div>
-            </div>
+      <header className="fixed top-0 left-0 right-0 z-[70] flex items-center justify-between px-5 sm:px-8 py-4 bg-gradient-to-b from-[#151c18]/95 via-[#151c18]/70 to-transparent">
+        <p className="font-serif text-lg sm:text-xl tracking-tight pointer-events-none">
+          <span className="text-[#f3f1eb]">ALGO</span>
+          <span className="text-[#8fb39a]">VAULT</span>
+        </p>
+        <nav className="flex items-center gap-4 sm:gap-6 font-mono text-[10px] uppercase tracking-[0.15em]">
+          <span className="text-[#a7aca2] hidden sm:inline">Story</span>
+          {!DEMO_CORE_FOCUS ? (
+            <Link to={ROUTES.communityFeed} className="text-[#c8cdc4] hover:text-[#8fb39a] transition-colors">
+              Community
+            </Link>
+          ) : null}
+          <Link to={ROUTES.access} className="text-[#c8cdc4] hover:text-[#8fb39a] transition-colors">
+            Operations
+          </Link>
+        </nav>
+      </header>
 
-            {/* SECTION B */}
-            <div className="lg:col-span-7 rounded-3xl border border-gray-100 bg-gradient-to-br from-[#0a0e27] via-[#111827] to-[#1e1b4b] p-7 overflow-hidden card-shadow reveal" data-reveal>
-              <div className="flex items-start justify-between gap-6 flex-wrap">
-                <div>
-                  <p className="text-xs font-bold text-cyan-200 uppercase tracking-widest">Every Contribution Verified On-Chain</p>
-                  <h3 className="text-white font-extrabold text-xl mt-2 tracking-tight">Algorand + Lora proof links</h3>
-                  <p className="text-white/55 text-sm mt-3 leading-relaxed max-w-xl">
-                    Contributions and releases are recorded transparently on Algorand. Anyone can independently verify
-                    transactions and balances using Lora Explorer — no trust required.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
-                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Auditability</p>
-                  <p className="text-white font-extrabold mt-1">Public, verifiable, timestamped</p>
-                </div>
-              </div>
+      {/* PROLOGUE */}
+      <section className="relative z-10 min-h-[100svh] flex flex-col items-center justify-center px-4 sm:px-6 overflow-hidden isolate">
+        <BackgroundMedia src={DOC.biharRooftops} alt="Flood-affected village in Bihar" />
+        <div className="absolute inset-0 z-[1] bg-[#151c18]/52 pointer-events-none" aria-hidden />
+        <div className="absolute inset-0 z-[1] bg-[radial-gradient(ellipse_90%_70%_at_50%_45%,transparent_0%,#151c18_72%)] pointer-events-none" aria-hidden />
 
-              <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 font-mono text-[12px] text-emerald-100/80 leading-relaxed">
-                <div>[12:00:05] 📡 INGRESS: “flood in Hyderabad?”</div>
-                <div>[12:00:08] 🔍 ORACLE: verifying live sources…</div>
-                <div>[12:00:12] ✅ CONSENSUS: sources linked + timestamped</div>
-                <div>[12:00:15] ⚡ SMART CONTRACT: action prepared (auditable)</div>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION C */}
-          <div className="mt-6 rounded-3xl border border-gray-100 bg-white p-7 card-shadow reveal" data-reveal>
-            <div className="flex items-start justify-between gap-6 flex-wrap">
-              <div>
-                <p className="text-xs font-bold text-violet-700 uppercase tracking-widest">AI Monitors 24/7</p>
-                <h3 className="text-gray-900 font-extrabold text-xl mt-2 tracking-tight">Global signals → verified briefs</h3>
-                <p className="text-sm text-gray-500 mt-3 leading-relaxed max-w-3xl">
-                  Instead of overwhelming dashboards, AlgoVault produces calm, human-grade intelligence: what’s happening,
-                  why it matters, sources, confidence, and the safest next action.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Live intelligence posture
-              </div>
-            </div>
-
-            <div className="mt-6 grid sm:grid-cols-3 gap-4">
-              {['South Asia', 'East Asia', 'Global'].map((r) => (
-                <div key={r} className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{r}</p>
-                  <div className="mt-3 h-2.5 rounded-full bg-white border border-gray-100 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-500 via-violet-500 to-cyan-400 w-[68%]" />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">Signal density → verified briefs (not raw noise)</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* USE CASES */}
-      <section id="use-cases" className="py-20 sm:py-28 bg-white">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <div className="text-center mb-14 reveal" data-reveal>
-            <span className="text-xs font-bold text-[#2563EB] uppercase tracking-widest">Real Impact</span>
-            <h2 className="text-gray-900 font-extrabold text-3xl sm:text-4xl mt-3 tracking-tight">
-              Built for people, not portfolios
-            </h2>
-            <p className="text-gray-500 mt-4 max-w-2xl mx-auto leading-relaxed">
-              Three real-world use cases that turn blockchain savings into a force for community protection and accountability.
-            </p>
-          </div>
-
-          {/* Floating real-life stories */}
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-4 reveal" data-reveal>
-              <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Stories</p>
-                <h3 className="text-gray-900 font-extrabold text-xl tracking-tight mt-1">Real-world scenarios</h3>
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {STORY_CARDS.map((s) => (
-                <div
-                  key={s.title}
-                  className="rounded-2xl border border-gray-100 bg-white card-shadow hover:card-shadow-hover transition-all overflow-hidden reveal"
-                  data-reveal
-                >
-                  <SmartImage src={s.img} alt={s.title} className="w-full h-36 object-cover" />
-                  <div className="p-4">
-                    <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${s.tagClass}`}>
-                      {s.tag}
-                    </span>
-                    <p className="text-gray-900 font-semibold text-base mt-2 leading-tight">{s.title}</p>
-                    <p className="text-gray-500 text-xs mt-1">{s.subtitle}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Photo-led scroll story panels */}
-          <div className="grid lg:grid-cols-3 gap-5 mb-12">
-            <div className="rounded-2xl overflow-hidden border border-gray-100 bg-white card-shadow reveal" data-reveal>
-              <div className="relative h-56">
-                <SmartImage
-                  src="https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=1600"
-                  alt="Contributors working together"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
-                <div className="absolute left-5 right-5 bottom-5">
-                  <p className="text-white font-bold text-lg leading-tight">People contribute together</p>
-                  <p className="text-white/70 text-sm mt-1">Shared goals, visible progress, no hidden ledger.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden border border-gray-100 bg-white card-shadow reveal" data-reveal>
-              <div className="relative h-56">
-                <SmartImage
-                  src="https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg?auto=compress&cs=tinysrgb&w=1600"
-                  alt="Education and future"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
-                <div className="absolute left-5 right-5 bottom-5">
-                  <p className="text-white font-bold text-lg leading-tight">A future funded early</p>
-                  <p className="text-white/70 text-sm mt-1">Guardian vaults for education, care, and responsibility.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden border border-gray-100 bg-white card-shadow reveal" data-reveal>
-              <div className="relative h-56">
-                <SmartImage
-                  src="https://images.pexels.com/photos/2335126/pexels-photo-2335126.jpeg?auto=compress&cs=tinysrgb&w=1600"
-                  alt="Community resilience"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
-                <div className="absolute left-5 right-5 bottom-5">
-                  <p className="text-white font-bold text-lg leading-tight">Resilience before crisis</p>
-                  <p className="text-white/70 text-sm mt-1">Disaster reserves that are transparent and ready.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-5">
-            {USE_CASES.map((uc) => (
-              <div
-                key={uc.title}
-                className={`group relative rounded-2xl border ${uc.border} p-6 sm:p-7 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-white reveal`}
-                data-reveal
-              >
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${uc.accent} flex items-center justify-center mb-5 shadow-lg`}>
-                  {uc.icon}
-                </div>
-                <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border mb-4 ${uc.tagColor}`}>
-                  {uc.tag}
-                </span>
-                <h3 className="font-bold text-gray-900 text-lg mb-2.5">{uc.title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{uc.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section className="py-20 sm:py-28 bg-[#f8f9fb]">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <div className="text-center mb-14 reveal" data-reveal>
-            <span className="text-xs font-bold text-[#2563EB] uppercase tracking-widest">Transparent Process</span>
-            <h2 className="text-gray-900 font-extrabold text-3xl sm:text-4xl mt-3 tracking-tight">
-              How it works
-            </h2>
-            <p className="text-gray-500 mt-4 max-w-2xl mx-auto leading-relaxed">
-              Three steps. All on-chain. No intermediaries, no trust required.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {STEPS.map((step) => (
-              <div key={step.num} className="relative reveal" data-reveal>
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="text-5xl font-extrabold text-gray-100 leading-none">{step.num}</span>
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7c3aed]/10 flex items-center justify-center text-[#2563EB]">
-                    {step.icon}
-                  </div>
-                </div>
-                <h3 className="font-bold text-gray-900 text-lg mb-2">{step.title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* TECHNOLOGY STRIP */}
-      <section className="py-16 bg-white border-y border-gray-100">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
-            <div>
-              <div className="text-2xl font-bold text-gray-900">ARC-4</div>
-              <div className="text-xs text-gray-500 mt-1">ABI Standard</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">Atomic</div>
-              <div className="text-xs text-gray-500 mt-1">Grouped Txns</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">ASA</div>
-              <div className="text-xs text-gray-500 mt-1">Badge NFTs</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">&lt;0.001</div>
-              <div className="text-xs text-gray-500 mt-1">ALGO per Txn</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* WALLET CONNECT SECTION */}
-      <section ref={walletRef} className="py-20 sm:py-28 bg-gradient-to-b from-white to-[#f8f9fb]">
-        <div className="max-w-[420px] mx-auto px-5 sm:px-6">
-          <WalletConnect />
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="py-8 bg-[#f8f9fb] border-t border-gray-100">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-gradient-to-br from-[#2563EB] to-[#7c3aed] flex items-center justify-center">
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-            </div>
-            <span className="text-sm font-semibold text-gray-700">AlgoVault</span>
-          </div>
-          <p className="text-xs text-gray-400">
-            Built on Algorand &middot; App ID: {import.meta.env.VITE_APP_ID} &middot; Testnet
+        <motion.div
+          className="relative z-10 w-full max-w-4xl mx-auto landing-hero-panel rounded-2xl px-6 sm:px-10 py-10 sm:py-14 text-center mt-16"
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <p className="font-mono text-[10px] tracking-[0.3em] text-[#a7aca2] uppercase mb-6">
+            Prologue · Global loss & damage
           </p>
+          <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-[#f3f1eb] leading-[0.92] tracking-tight">
+            Relief funds almost never arrive when the body is still in{' '}
+            <span className="text-[#e8b4ae]">shock.</span>
+          </h1>
+          <p className="font-sans text-base sm:text-lg text-[#c8cdc4] max-w-2xl mx-auto mt-8 leading-relaxed">
+            The UN&apos;s Loss & Damage Fund has disbursed <strong className="text-[#f3f1eb] font-semibold">$0</strong> in
+            last-mile payouts—from Patna to Pibor, Indus to Awash. Settlement latency dressed as policy.
+          </p>
+          <div className="inline-block mt-8 px-5 py-3 rounded-lg border border-[#7c3b35]/40 bg-[#7c3b35]/20">
+            <p className="font-mono text-sm text-[#f3f1eb]">
+              Days since COP27 — fund live on paper:{' '}
+              <span className="text-[#e8b4ae] font-semibold">{copDays}</span>
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="absolute bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2"
+          animate={{ y: [0, 8, 0] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#a7aca2]">Scroll</span>
+          <ChevronDown size={20} className="text-[#8fb39a]" strokeWidth={1.5} />
+        </motion.div>
+      </section>
+
+      {/* AUTOPSY */}
+      <section className="relative z-30 py-28 sm:py-36 px-5 sm:px-8 overflow-hidden isolate bg-[#151c18]">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#7c3b35]/8 rounded-full blur-[100px] landing-orb pointer-events-none" aria-hidden />
+
+        <motion.div className="relative max-w-7xl mx-auto xl:pr-10" {...fade}>
+          <p className="font-mono text-[10px] tracking-[0.3em] text-[#8fb39a] uppercase mb-3">The autopsy</p>
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#f3f1eb] leading-[0.95] tracking-tight max-w-3xl">
+            When &ldquo;soon&rdquo; means seasons, people stop believing in relief.
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-16">
+            {STATS.map((item, i) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.08 }}
+                className="relative p-7 sm:p-8 rounded-2xl border border-white/12 bg-[#151917] hover:border-[#7c3b35]/40 transition-colors"
+              >
+                <span className="absolute top-4 right-4 font-mono text-[10px] text-[#6b736d]">0{i + 1}</span>
+                <p className="font-serif text-5xl sm:text-6xl text-[#e8b4ae] tracking-tighter leading-none">{item.stat}</p>
+                <div className="h-px w-full my-5 bg-white/15" />
+                <p className="font-mono text-[10px] text-[#c8cdc4] uppercase tracking-widest mb-2">{item.label}</p>
+                <p className="font-sans text-sm text-[#a7aca2] leading-relaxed">{item.context}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      </section>
+
+      <ActDivider
+        act="Act I"
+        roman="I"
+        title="The Crisis"
+        subtitle="Four chapters. Four geographies. One pattern: catastrophe in hours, compensation in years."
+        variant="crisis"
+      />
+
+      {STORY_CRISIS.map((chapter, i) => (
+        <StoryPanel key={chapter.id} chapter={chapter} index={i} />
+      ))}
+
+      <ActDivider
+        act="Act II"
+        roman="II"
+        title="The Turn"
+        subtitle="From documenting loss to compressing the clock—where verification meets settlement."
+        variant="turn"
+      />
+
+      {STORY_RESOLVE.map((chapter, i) => (
+        <StoryPanel key={chapter.id} chapter={chapter} index={i} />
+      ))}
+
+      <ActDivider
+        act="Act III"
+        roman="III"
+        title="The Protocol"
+        subtitle="Institutional rails that refuse to treat urgency as a footnote."
+        variant="resolve"
+      />
+
+      <section className="relative z-30 py-24 sm:py-32 px-5 sm:px-8 isolate bg-[#151917]">
+        <motion.div className="relative max-w-6xl mx-auto xl:pr-10" {...fade}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
+            {PROTOCOL_STEPS.map((step, i) => {
+              const Icon = step.icon
+              return (
+                <motion.div
+                  key={step.title}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.06, duration: 0.45 }}
+                  className="relative p-7 sm:p-8 rounded-2xl border border-[#506a5a]/35 bg-[#151c18] hover:border-[#506a5a]/60 transition-colors"
+                >
+                  <span className="font-mono text-[10px] text-[#6b736d] absolute top-5 right-5">{step.step}</span>
+                  <div className="w-12 h-12 rounded-xl bg-[#506a5a]/20 border border-[#506a5a]/40 flex items-center justify-center mb-5">
+                    <Icon size={22} className="text-[#8fb39a]" strokeWidth={1.5} />
+                  </div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#8fb39a] mb-2">{step.title}</p>
+                  <p className="font-sans text-sm text-[#c8cdc4] leading-relaxed">{step.body}</p>
+                </motion.div>
+              )
+            })}
+          </div>
+        </motion.div>
+      </section>
+
+      {/* EPILOGUE */}
+      <section className="relative z-30 min-h-[70svh] flex flex-col lg:flex-row overflow-hidden isolate">
+        <div className="relative lg:w-1/2 min-h-[45svh] lg:min-h-[70svh] overflow-hidden">
+          <BackgroundMedia src={DOC.pakistanRoadGone} alt="Flood damage, Pakistan" />
+          <div className="absolute inset-0 z-[1] bg-[#151c18]/45 lg:bg-gradient-to-r lg:from-transparent lg:via-[#151c18]/40 lg:to-[#151c18]" />
         </div>
+        <div className="lg:w-1/2 flex items-center px-6 sm:px-10 py-16 sm:py-20 bg-[#151c18] border-t lg:border-t-0 lg:border-l border-white/10">
+          <motion.div {...fade} className="max-w-md">
+            <p className="font-mono text-[10px] tracking-[0.3em] text-[#8fb39a] uppercase mb-5">Epilogue</p>
+            <p className="font-serif text-2xl sm:text-3xl lg:text-4xl text-[#f3f1eb] leading-[0.95] tracking-tight">
+              The most obscene line in humanitarian finance is not the amount pledged. It is the{' '}
+              <span className="italic text-[#d4bc8a]">timestamp.</span>
+            </p>
+            <p className="font-sans text-sm sm:text-base text-[#c8cdc4] mt-6 leading-relaxed">
+              AlgoVault is built for operators who cannot say &ldquo;processing&rdquo; again.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* GATEWAY */}
+      <section className="relative z-30 py-28 sm:py-36 px-5 sm:px-8 overflow-hidden isolate bg-[#151c18]">
+        <motion.div className="relative max-w-3xl mx-auto text-center xl:pr-8" {...fade}>
+          <p className="font-mono text-[10px] tracking-[0.3em] text-[#a7aca2] uppercase mb-3">Operations gateway</p>
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl text-[#f3f1eb] leading-[0.95] tracking-tight">
+            Enter the console.
+          </h2>
+          <p className="font-sans text-sm text-[#c8cdc4] max-w-md mx-auto mt-5 leading-relaxed">
+            Wallet or demo—the infrastructure that models how verified relief should move.
+          </p>
+
+          <div className="mt-12 p-6 sm:p-8 rounded-2xl landing-copy-panel">
+            <div className="flex justify-center mb-4">
+              <Link
+                to={ROUTES.access}
+                className="px-8 py-3.5 font-sans font-semibold bg-[#8fb39a] text-[#151c18] rounded-xl hover:brightness-105 transition-all min-h-[48px] inline-flex items-center justify-center"
+              >
+                Enter Operations
+              </Link>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+              <button
+                type="button"
+                onClick={handlePera}
+                disabled={!peraReady}
+                className="px-7 py-3.5 font-sans font-medium bg-[#ffe200] text-black rounded-xl hover:brightness-105 transition-all disabled:opacity-40 min-h-[48px]"
+              >
+                Pera Wallet
+              </button>
+              <button
+                type="button"
+                onClick={handleDefly}
+                disabled={!deflyReady}
+                className="px-7 py-3.5 font-sans font-medium bg-white text-black rounded-xl hover:brightness-95 transition-all disabled:opacity-40 min-h-[48px]"
+              >
+                Defly Wallet
+              </button>
+              <button
+                type="button"
+                onClick={handleDemo}
+                className="px-7 py-3.5 font-sans font-medium text-[#f3f1eb] border border-[#506a5a] rounded-xl hover:bg-[#506a5a]/20 transition-all min-h-[48px]"
+              >
+                Demo Access
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* SDGs */}
+      <section className="relative z-30 py-24 sm:py-32 px-5 sm:px-8 isolate bg-[#151917] border-t border-white/10">
+        <motion.div className="relative max-w-7xl mx-auto xl:pr-10" {...fade}>
+          <p className="font-mono text-[10px] tracking-[0.3em] text-[#8fb39a] uppercase mb-3">
+            UN Sustainable Development Goals
+          </p>
+          <h2 className="font-serif text-3xl sm:text-4xl text-[#f3f1eb] leading-[0.95] tracking-tight max-w-2xl">
+            Four goals this infrastructure is built to serve.
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-12">
+            {SDG_GOALS.map((goal, i) => (
+              <motion.div
+                key={goal.id}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06, duration: 0.45 }}
+                className="rounded-2xl border border-white/10 bg-[#151c18] p-6 sm:p-7 hover:border-white/20 transition-colors"
+              >
+                <div className="flex items-start gap-4">
+                  <span
+                    className="font-serif text-4xl sm:text-5xl leading-none shrink-0"
+                    style={{ color: goal.color }}
+                  >
+                    {goal.id}
+                  </span>
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#a7aca2] mb-1">
+                      SDG {goal.id}
+                    </p>
+                    <h3 className="font-serif text-xl text-[#f3f1eb] leading-tight">{goal.title}</h3>
+                    <p className="font-sans text-sm text-[#c8cdc4] mt-3 leading-relaxed">{goal.summary}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      </section>
+
+      {/* INSTITUTIONAL ALIGNMENT */}
+      <section className="relative z-30 py-20 sm:py-28 px-5 sm:px-8 isolate bg-[#151c18] border-t border-white/10">
+        <motion.div className="relative max-w-7xl mx-auto xl:pr-10" {...fade}>
+          <p className="font-mono text-[10px] tracking-[0.3em] text-[#a7aca2] uppercase mb-3">
+            Institutional context
+          </p>
+          <h2 className="font-serif text-2xl sm:text-3xl text-[#f3f1eb] leading-[0.95] tracking-tight max-w-2xl">
+            Aligned with the actors who define disaster response—not endorsed by them.
+          </h2>
+          <p className="font-sans text-sm text-[#a7aca2] mt-4 max-w-2xl leading-relaxed">
+            AlgoVault is independent testnet infrastructure. These links are reference frameworks for loss &amp; damage,
+            humanitarian coordination, and rights in crisis.
+          </p>
+
+          <ul className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {INSTITUTIONAL_LINKS.map((org) => (
+              <li key={org.abbr}>
+                <a
+                  href={org.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col h-full rounded-xl border border-white/10 bg-[#151917] px-4 py-4 hover:border-[#506a5a]/50 hover:bg-[#151917]/80 transition-colors"
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-sm font-medium text-[#8fb39a]">{org.abbr}</span>
+                    <ExternalLink size={14} className="text-[#6b736d] group-hover:text-[#a7aca2] shrink-0" />
+                  </span>
+                  <span className="font-sans text-xs text-[#c8cdc4] mt-2 leading-snug">{org.name}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </motion.div>
+      </section>
+
+      <footer className="relative z-30 py-12 border-t border-white/10 bg-[#151c18] px-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#a7aca2] text-center">
+          Institutional disaster disbursement · Algorand testnet
+        </p>
+        <p className="font-mono text-[9px] text-[#6b736d] text-center max-w-3xl mx-auto mt-3 leading-relaxed">
+          Imagery: Wikimedia Commons — PIB India, US DoD, Oxfam (CC BY 2.0), NASA, ESA/Copernicus (CC BY-SA 3.0 IGO).
+        </p>
       </footer>
     </div>
   )

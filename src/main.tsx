@@ -6,7 +6,7 @@ import '@blockshake/defly-connect'
 import App from './App.tsx'
 import './index.css'
 import { getNetworkConfig } from './services/networkConfig'
-import { ErrorBoundary } from './components/ErrorBoundary'
+import ErrorBoundary from './components/ErrorBoundary'
 
 const net = getNetworkConfig()
 

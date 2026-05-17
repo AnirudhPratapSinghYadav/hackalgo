@@ -1,0 +1,482 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    intcblock 1 0 8 128
+    bytecblock "admin" "appeal_count" 0x151f7c75
+    txn ApplicationID
+    bnz main_after_if_else@2
+    // smart_contracts/community_donation_hub/contract.py:33
+    // self.appeal_count = GlobalState(UInt64(0))
+    bytec_1 // "appeal_count"
+    intc_1 // 0
+    app_global_put
+    // smart_contracts/community_donation_hub/contract.py:34
+    // self.admin = GlobalState(ARC4Address())
+    bytec_0 // "admin"
+    global ZeroAddress
+    app_global_put
+
+main_after_if_else@2:
+    // smart_contracts/community_donation_hub/contract.py:28
+    // class CommunityDonationHub(ARC4Contract):
+    txn NumAppArgs
+    bz main___algopy_default_create@15
+    txn OnCompletion
+    !
+    assert
+    txn ApplicationID
+    assert
+    pushbytess 0xf3f14ea3 0x352c63cc 0x2e2a7349 0xb1b073cd 0x21f1ddff 0xf11492f3 // method "bootstrap(address)void", method "create_appeal(uint64,address,string)uint64", method "admin_approve(uint64)void", method "donate(uint64,pay)void", method "withdraw(uint64)void", method "get_appeal(uint64)(uint64,uint64,uint64)"
+    txna ApplicationArgs 0
+    match bootstrap create_appeal admin_approve donate withdraw get_appeal
+    err
+
+main___algopy_default_create@15:
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    return
+
+
+// contract.CommunityDonationHub.bootstrap[routing]() -> void:
+bootstrap:
+    // smart_contracts/community_donation_hub/contract.py:36
+    // @abimethod
+    txna ApplicationArgs 1
+    dup
+    len
+    pushint 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/community_donation_hub/contract.py:38
+    // assert self.admin.value.bytes == op.bzero(32)
+    intc_1 // 0
+    bytec_0 // "admin"
+    app_global_get_ex
+    assert // check self.admin exists
+    pushint 32
+    bzero
+    ==
+    assert
+    // smart_contracts/community_donation_hub/contract.py:39
+    // self.admin.value = admin
+    bytec_0 // "admin"
+    swap
+    app_global_put
+    // smart_contracts/community_donation_hub/contract.py:36
+    // @abimethod
+    intc_0 // 1
+    return
+
+
+// contract.CommunityDonationHub.create_appeal[routing]() -> void:
+create_appeal:
+    // smart_contracts/community_donation_hub/contract.py:41
+    // @abimethod
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    txna ApplicationArgs 2
+    dup
+    len
+    pushint 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    txna ApplicationArgs 3
+    dup
+    intc_1 // 0
+    extract_uint16 // on error: invalid array length header
+    pushint 2
+    +
+    swap
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    // smart_contracts/community_donation_hub/contract.py:48
+    // aid = self.appeal_count.value + UInt64(1)
+    intc_1 // 0
+    bytec_1 // "appeal_count"
+    app_global_get_ex
+    assert // check self.appeal_count exists
+    intc_0 // 1
+    +
+    // smart_contracts/community_donation_hub/contract.py:49
+    // self.appeal_count.value = aid
+    bytec_1 // "appeal_count"
+    dig 1
+    app_global_put
+    // smart_contracts/community_donation_hub/contract.py:50
+    // box = BoxRef(key=op.itob(aid))
+    itob
+    // smart_contracts/community_donation_hub/contract.py:51
+    // box.create(size=BOX_SIZE)
+    dup
+    intc_3 // 128
+    box_create
+    pop
+    // smart_contracts/community_donation_hub/contract.py:52
+    // buf = op.bzero(BOX_SIZE)
+    intc_3 // 128
+    bzero
+    // smart_contracts/community_donation_hub/contract.py:53
+    // buf = op.replace(buf, 0, op.itob(target.native))
+    uncover 3
+    btoi
+    itob
+    replace2 0
+    // smart_contracts/community_donation_hub/contract.py:54
+    // buf = op.replace(buf, 8, op.itob(UInt64(0)))
+    intc_1 // 0
+    itob
+    swap
+    dig 1
+    replace2 8
+    // smart_contracts/community_donation_hub/contract.py:55
+    // buf = op.replace(buf, 16, op.itob(UInt64(0)))
+    swap
+    replace2 16
+    // smart_contracts/community_donation_hub/contract.py:56
+    // buf = op.replace(buf, 24, beneficiary.bytes)
+    uncover 2
+    replace2 24
+    // smart_contracts/community_donation_hub/contract.py:57
+    // box.put(buf)
+    dig 1
+    swap
+    box_put
+    // smart_contracts/community_donation_hub/contract.py:41
+    // @abimethod
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// contract.CommunityDonationHub.admin_approve[routing]() -> void:
+admin_approve:
+    // smart_contracts/community_donation_hub/contract.py:60
+    // @abimethod
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    // smart_contracts/community_donation_hub/contract.py:62
+    // assert Txn.sender.bytes == self.admin.value.bytes
+    txn Sender
+    intc_1 // 0
+    bytec_0 // "admin"
+    app_global_get_ex
+    assert // check self.admin exists
+    ==
+    assert
+    // smart_contracts/community_donation_hub/contract.py:63
+    // box = BoxRef(key=op.itob(appeal_id.native))
+    btoi
+    itob
+    // smart_contracts/community_donation_hub/contract.py:64
+    // default = op.bzero(BOX_SIZE)
+    intc_3 // 128
+    bzero
+    // smart_contracts/community_donation_hub/contract.py:65
+    // buf = box.get(default=default)
+    dig 1
+    box_get
+    select
+    // smart_contracts/community_donation_hub/contract.py:66
+    // status = op.btoi(op.extract(buf, 16, 8))
+    dup
+    pushint 16
+    extract_uint64
+    // smart_contracts/community_donation_hub/contract.py:67
+    // assert status == UInt64(0)
+    !
+    assert
+    // smart_contracts/community_donation_hub/contract.py:68
+    // buf = op.replace(buf, 16, op.itob(UInt64(1)))
+    intc_0 // 1
+    itob
+    replace2 16
+    // smart_contracts/community_donation_hub/contract.py:69
+    // box.put(buf)
+    box_put
+    // smart_contracts/community_donation_hub/contract.py:60
+    // @abimethod
+    intc_0 // 1
+    return
+
+
+// contract.CommunityDonationHub.donate[routing]() -> void:
+donate:
+    // smart_contracts/community_donation_hub/contract.py:71
+    // @abimethod
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    txn GroupIndex
+    intc_0 // 1
+    -
+    dup
+    gtxns TypeEnum
+    intc_0 // pay
+    ==
+    assert // transaction type is pay
+    // smart_contracts/community_donation_hub/contract.py:73
+    // assert payment.receiver == Global.current_application_address
+    dup
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    assert
+    // smart_contracts/community_donation_hub/contract.py:74
+    // assert payment.amount > UInt64(0)
+    gtxns Amount
+    dup
+    assert
+    // smart_contracts/community_donation_hub/contract.py:75
+    // box = BoxRef(key=op.itob(appeal_id.native))
+    dig 1
+    btoi
+    itob
+    // smart_contracts/community_donation_hub/contract.py:76
+    // default = op.bzero(BOX_SIZE)
+    intc_3 // 128
+    bzero
+    // smart_contracts/community_donation_hub/contract.py:77
+    // buf = box.get(default=default)
+    dig 1
+    box_get
+    select
+    // smart_contracts/community_donation_hub/contract.py:78
+    // status = op.btoi(op.extract(buf, 16, 8))
+    dup
+    pushint 16
+    extract_uint64
+    // smart_contracts/community_donation_hub/contract.py:79
+    // assert status == UInt64(1)
+    intc_0 // 1
+    ==
+    assert
+    // smart_contracts/community_donation_hub/contract.py:80
+    // raised = op.btoi(op.extract(buf, 8, 8))
+    dup
+    intc_2 // 8
+    extract_uint64
+    // smart_contracts/community_donation_hub/contract.py:81
+    // raised = raised + payment.amount
+    dig 3
+    +
+    // smart_contracts/community_donation_hub/contract.py:82
+    // buf = op.replace(buf, 8, op.itob(raised))
+    itob
+    replace2 8
+    // smart_contracts/community_donation_hub/contract.py:83
+    // box.put(buf)
+    box_put
+    // smart_contracts/community_donation_hub/contract.py:87
+    // amount_micro=ARC4UInt64(payment.amount),
+    itob
+    // smart_contracts/community_donation_hub/contract.py:88
+    // donor=ARC4Address(Txn.sender),
+    txn Sender
+    // smart_contracts/community_donation_hub/contract.py:85-89
+    // Donated(
+    //     appeal_id=appeal_id,
+    //     amount_micro=ARC4UInt64(payment.amount),
+    //     donor=ARC4Address(Txn.sender),
+    // )
+    cover 2
+    concat
+    swap
+    concat
+    // smart_contracts/community_donation_hub/contract.py:84-90
+    // emit(
+    //     Donated(
+    //         appeal_id=appeal_id,
+    //         amount_micro=ARC4UInt64(payment.amount),
+    //         donor=ARC4Address(Txn.sender),
+    //     )
+    // )
+    pushbytes 0xd44db575 // method "Donated(uint64,uint64,address)"
+    swap
+    concat
+    log
+    // smart_contracts/community_donation_hub/contract.py:71
+    // @abimethod
+    intc_0 // 1
+    return
+
+
+// contract.CommunityDonationHub.withdraw[routing]() -> void:
+withdraw:
+    // smart_contracts/community_donation_hub/contract.py:92
+    // @abimethod
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    // smart_contracts/community_donation_hub/contract.py:94
+    // box = BoxRef(key=op.itob(appeal_id.native))
+    dup
+    btoi
+    itob
+    // smart_contracts/community_donation_hub/contract.py:95
+    // default = op.bzero(BOX_SIZE)
+    intc_3 // 128
+    bzero
+    // smart_contracts/community_donation_hub/contract.py:96
+    // buf = box.get(default=default)
+    dig 1
+    box_get
+    select
+    // smart_contracts/community_donation_hub/contract.py:97
+    // status = op.btoi(op.extract(buf, 16, 8))
+    dup
+    pushint 16
+    extract_uint64
+    // smart_contracts/community_donation_hub/contract.py:98
+    // assert status == UInt64(1)
+    intc_0 // 1
+    ==
+    assert
+    // smart_contracts/community_donation_hub/contract.py:99
+    // beneficiary = op.extract(buf, 24, 32)
+    dup
+    extract 24 32
+    // smart_contracts/community_donation_hub/contract.py:100
+    // assert Txn.sender.bytes == beneficiary
+    txn Sender
+    dig 1
+    ==
+    assert
+    // smart_contracts/community_donation_hub/contract.py:101
+    // raised = op.btoi(op.extract(buf, 8, 8))
+    dig 1
+    intc_2 // 8
+    extract_uint64
+    // smart_contracts/community_donation_hub/contract.py:102
+    // assert raised > UInt64(0)
+    dup
+    assert
+    // smart_contracts/community_donation_hub/contract.py:103
+    // itxn.Payment(receiver=Account(beneficiary), amount=raised, fee=0).submit()
+    itxn_begin
+    dup
+    itxn_field Amount
+    swap
+    itxn_field Receiver
+    intc_0 // pay
+    itxn_field TypeEnum
+    intc_1 // 0
+    itxn_field Fee
+    itxn_submit
+    // smart_contracts/community_donation_hub/contract.py:107
+    // amount_micro=ARC4UInt64(raised),
+    itob
+    // smart_contracts/community_donation_hub/contract.py:108
+    // beneficiary=ARC4Address(Txn.sender),
+    txn Sender
+    // smart_contracts/community_donation_hub/contract.py:105-109
+    // Withdrawn(
+    //     appeal_id=appeal_id,
+    //     amount_micro=ARC4UInt64(raised),
+    //     beneficiary=ARC4Address(Txn.sender),
+    // )
+    uncover 4
+    uncover 2
+    concat
+    swap
+    concat
+    // smart_contracts/community_donation_hub/contract.py:104-110
+    // emit(
+    //     Withdrawn(
+    //         appeal_id=appeal_id,
+    //         amount_micro=ARC4UInt64(raised),
+    //         beneficiary=ARC4Address(Txn.sender),
+    //     )
+    // )
+    pushbytes 0x9fe1a113 // method "Withdrawn(uint64,uint64,address)"
+    swap
+    concat
+    log
+    // smart_contracts/community_donation_hub/contract.py:111
+    // buf = op.replace(buf, 16, op.itob(UInt64(2)))
+    pushint 2
+    itob
+    replace2 16
+    // smart_contracts/community_donation_hub/contract.py:112
+    // buf = op.replace(buf, 8, op.itob(UInt64(0)))
+    intc_1 // 0
+    itob
+    replace2 8
+    // smart_contracts/community_donation_hub/contract.py:113
+    // box.put(buf)
+    box_put
+    // smart_contracts/community_donation_hub/contract.py:92
+    // @abimethod
+    intc_0 // 1
+    return
+
+
+// contract.CommunityDonationHub.get_appeal[routing]() -> void:
+get_appeal:
+    // smart_contracts/community_donation_hub/contract.py:115
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    // smart_contracts/community_donation_hub/contract.py:117
+    // box = BoxRef(key=op.itob(appeal_id.native))
+    btoi
+    itob
+    // smart_contracts/community_donation_hub/contract.py:118
+    // default = op.bzero(BOX_SIZE)
+    intc_3 // 128
+    bzero
+    // smart_contracts/community_donation_hub/contract.py:119
+    // buf = box.get(default=default)
+    swap
+    box_get
+    select
+    // smart_contracts/community_donation_hub/contract.py:120
+    // target = ARC4UInt64(op.btoi(op.extract(buf, 0, 8)))
+    dup
+    extract 0 8
+    // smart_contracts/community_donation_hub/contract.py:121
+    // raised = ARC4UInt64(op.btoi(op.extract(buf, 8, 8)))
+    dig 1
+    extract 8 8
+    // smart_contracts/community_donation_hub/contract.py:122
+    // status = ARC4UInt64(op.btoi(op.extract(buf, 16, 8)))
+    uncover 2
+    extract 16 8
+    // smart_contracts/community_donation_hub/contract.py:115
+    // @abimethod(readonly=True)
+    cover 2
+    concat
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return

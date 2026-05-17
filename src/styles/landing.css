@@ -1,0 +1,87 @@
+/* Landing-only — scoped via .landing-root */
+
+@keyframes landing-media-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes landing-pulse-glow {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes landing-shimmer-line {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+/* Media stays clipped — never bleeds into next section */
+.landing-root .landing-media {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.landing-root .landing-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center center;
+  animation: landing-media-zoom 32s ease-out forwards;
+  will-change: transform;
+}
+
+.landing-root .landing-orb {
+  animation: landing-pulse-glow 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.landing-root .landing-shimmer {
+  overflow: hidden;
+}
+
+.landing-root .landing-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(243, 241, 235, 0.03) 50%,
+    transparent 60%
+  );
+  animation: landing-shimmer-line 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Readable copy on any photo */
+.landing-root .landing-copy-panel {
+  background: rgba(13, 15, 14, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.landing-root .landing-hero-panel {
+  background: rgba(13, 15, 14, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(20px);
+}
